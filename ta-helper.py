@@ -49,7 +49,7 @@ def setup_new_channel_resources(chan_name, chan_data):
         os.symlink(channel_thumb_path, TARGET_FOLDER + "/" + chan_name + "/" + "folder.jpg")
         channel_banner_path = TA_CACHE + chan_data['channel_banner_url']
         os.symlink(channel_banner_path, TARGET_FOLDER + "/" + chan_name + "/" + "banner.jpg")
-    
+
     # Generate tvshow.nfo for media managers, no TA_CACHE required.
     logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo")
     f= open(TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo","w+")
@@ -136,7 +136,7 @@ def cleanup_after_deleted_videos():
                 target_path = os.readlink(path)
                 # Resolve relative symlinks
                 if not os.path.isabs(target_path):
-                    target_path = os.path.join(os.path.dirname(path),target_path)     
+                    target_path = os.path.join(os.path.dirname(path),target_path)
                 if not os.path.exists(target_path):
                     # The symlink is broken.
                     broken.append(path)
@@ -168,7 +168,7 @@ url = TA_SERVER + '/api/channel/'
 headers = {'Authorization': 'Token ' + TA_TOKEN}
 req = requests.get(url, headers=headers)
 if req and req.status_code == 200:
-    channels_json = req.json() 
+    channels_json = req.json()
     channels_data = channels_json['data']
 else :
     logger.info("No Channels in TA, exiting")
@@ -178,7 +178,7 @@ else :
 while channels_json['paginate']['last_page']:
     channels_json = requests.get(url, headers=headers, params={'page': channels_json['paginate']['current_page'] + 1}).json()
     channels_data.extend(channels_json['data'])
-                     
+
 for channel in channels_data:
     chan_name = urlify(channel['channel_name'])
     description = channel['channel_description']

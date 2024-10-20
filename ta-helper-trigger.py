@@ -17,10 +17,10 @@ def return_response():
 
     # Kickstart ta-helper script as there have been changes.
     print("TA has made changes to the video archive, invoking helper script.")
-    
+
     # Use Popen so we immediately return and sending apprise doesn't time out.
     subprocess.Popen(["python", TA_HELPER_SCRIPT])
-    
+
     ## Do something with the request.json data.
     return result
 
