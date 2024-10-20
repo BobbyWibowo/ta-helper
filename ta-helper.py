@@ -21,6 +21,7 @@ logger.addHandler(handler)
 load_dotenv()
 NOTIFICATIONS_ENABLED = bool(strtobool(os.environ.get("NOTIFICATIONS_ENABLED", 'False')))
 GENERATE_NFO = bool(strtobool(os.environ.get("GENERATE_NFO", 'False')))
+SYMLINK_SUBS = bool(strtobool(os.environ.get("SYMLINK_SUBS", 'False')))
 FROMADDR = str(os.environ.get("MAIL_USER"))
 RECIPIENTS = str(os.environ.get("MAIL_RECIPIENTS"))
 RECIPIENTS = RECIPIENTS.split(',')
@@ -70,10 +71,8 @@ def setup_new_channel_resources(chan_name, chan_data):
     f.close()
 
 def generate_new_video_nfo(chan_name, title, video_meta_data):
-    logger.info("Generating NFO file and subtitle symlink for %s video: %s", video_meta_data['channel']['channel_name'], video_meta_data['title'])
-    # TA has added a new video.  Create a symlink to subtitles and an NFO file for media managers.
-    video_basename = os.path.splitext(video_meta_data['media_url'])[0]
-    os.symlink(TA_MEDIA_FOLDER + video_basename + ".en.vtt", TARGET_FOLDER + "/" + chan_name + "/" + title.replace(".mp4",".en.vtt"))
+    logger.info("Generating NFO file for %s video: %s", video_meta_data['channel']['channel_name'], video_meta_data['title'])
+    # TA has added a new video. Create an NFO file for media managers.
     title = title.replace('.mp4','.nfo')
     f= open(TARGET_FOLDER + "/" + chan_name + "/" + title,"w+")
     f.write('<?xml version="1.0" ?>\n<episodedetails>\n\t' +
@@ -83,6 +82,12 @@ def generate_new_video_nfo(chan_name, title, video_meta_data):
         "<plot>" + video_meta_data['description'] + "</plot>\n\t" +
         "<premiered>" + video_meta_data['published'] + "</premiered>\n</episodedetails>")
     f.close()
+
+def generate_new_video_sub(chan_name, title, video_meta_data):
+    logger.info("Generating subtitle symlink for %s video: %s", video_meta_data['channel']['channel_name'], video_meta_data['title'])
+    # TA has added a new video. Create a symlink to subtitles.
+    video_basename = os.path.splitext(video_meta_data['media_url'])[0]
+    os.symlink(TA_MEDIA_FOLDER + video_basename + ".en.vtt", TARGET_FOLDER + "/" + chan_name + "/" + title.replace(".mp4",".eng.vtt"))
 
 def notify(video_meta_data):
 
@@ -234,6 +239,10 @@ for channel in channels_data:
                     generate_new_video_nfo(chan_name, title, video)
                 else:
                     logger.debug("Not generating NFO files for %s new video: %s as GENERATE_NFO is et to False in .env settings.", chan_name, title)
+                if SYMLINK_SUBS:
+                    generate_new_video_sub(chan_name, title, video)
+                else:
+                    logger.debug("Not generating subtitle symlink for %s new video: %s as SYMLINK_SUBS is et to False in .env settings.", chan_name, title)
             except FileExistsError:
                 # This means we already had processed the video, completely normal.
                 logger.debug("Symlink exists for " + title)

@@ -35,6 +35,10 @@ MAIL_RECIPIENTS="me@x.com,you@x.com"
 # "True" for enable, "False" for disable
 GENERATE_NFO = "True"
 
+# Whether this script should symlink subtitles
+# "True" for enable, "False" for disable
+SYMLINK_SUBS = "True"
+
 # Instruction to tell apprise how to notify.  Read all of the options
 # here: https://pypi.org/project/apprise/
 APPRISE_LINK = "mailto://<username>:<password>@gmail.com"
