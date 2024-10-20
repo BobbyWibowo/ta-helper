@@ -49,7 +49,7 @@ def setup_new_channel_resources(chan_name, chan_data):
         logger.info("No TA_CACHE available so cannot setup symlinks to cache files.")
     else:
         # Link the channel logo from TA docker cache into target folder for media managers
-        # and file explorers.  Provide cover.jpg, poster.jpg and banner.jpg symlinks.
+        # and file explorers. Provide cover.jpg, poster.jpg and banner.jpg symlinks.
         channel_thumb_path = cache_path(chan_data['channel_thumb_url'])
         logger.info("Symlink cache %s thumb to poster, cover and folder.jpg files.", channel_thumb_path)
         os.symlink(channel_thumb_path, TARGET_FOLDER + "/" + chan_name + "/" + "poster.jpg")
@@ -60,34 +60,62 @@ def setup_new_channel_resources(chan_name, chan_data):
 
     # Generate tvshow.nfo for media managers, no TA_CACHE required.
     logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo")
-    f= open(TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo","w+")
+    f = open(TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo", "w+")
     f.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + '\n'
             '<tvshow>' + '\n\t' + '<title>' +
-            chan_data['channel_name'] + "</title>\n\t" +
-            "<showtitle>" + chan_data['channel_name'] + "</showtitle>\n\t" +
-            "<uniqueid>" + chan_data['channel_id'] + "</uniqueid>\n\t" +
-            "<plot>" + chan_data['channel_description'] + "</plot>\n\t" +
-            "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n</episodedetails>")
+            (chan_data['channel_name'] or chan_data['channel_id']) + "</title>\n\t" +
+            "<showtitle>" + (chan_data['channel_name'] or chan_data['channel_id']) + "</showtitle>\n\t" +
+            "<youtubemetadataid>" + chan_data['channel_id'] + "</youtubemetadataid>\n\t" +
+            "<lockdata>true</lockdata>\n\t" +
+            "<plot>" + (chan_data['channel_description'] or "") + "</plot>\n\t" +
+            "<outline>" + (chan_data['channel_description'] or "") + "</outline>\n\t" +
+            "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n</tvshow>")
     f.close()
 
-def generate_new_video_nfo(chan_name, title, video_meta_data):
+def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, playlist_data, season_num):
+    logger.info("New Playlist %s, setup resources.", playlist_name)
+    if TA_CACHE == "":
+        logger.info("No TA_CACHE available so cannot setup symlinks to cache files.")
+    else:
+        # Link the playlist thumb from TA docker cache into target folder for media managers
+        # and file explorers. Provide <playlist_id>.jpg symlinks.
+        playlist_thumb_path = cache_path(playlist_data['playlist_thumbnail'])
+        logger.info("Symlink cache %s thumb to poster.jpg file.", playlist_thumb_path)
+        os.symlink(playlist_thumb_path, TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "poster.jpg")
+
+    # Generate season.nfo for media managers, no TA_CACHE required.
+    logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo")
+    f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo", "w+")
+    f.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + '\n'
+            '<season>' + '\n\t' + '<title>' +
+            (playlist_data['playlist_name'] or playlist_data['playlist_id']) + "</title>\n\t" +
+            "<showtitle>" + (chan_data['channel_name'] or chan_data['channel_id']) + "</showtitle>\n\t" +
+            "<youtubemetadataid>" + playlist_data['playlist_id'] + "</youtubemetadataid>\n\t" +
+            "<lockdata>true</lockdata>\n\t" +
+            "<plot>" + (playlist_data['playlist_description'] or "") + "</plot>\n\t" +
+            "<premiered>" + playlist_data['playlist_last_refresh'] + "</premiered>\n\t" +
+            "<seasonnumber>" + str(season_num) + "</seasonnumber>\n</season>")
+    f.close()
+
+def generate_new_video_nfo(chan_name, playlist_name, title, video_meta_data, episode_num):
     logger.info("Generating NFO file for %s video: %s", video_meta_data['channel']['channel_name'], video_meta_data['title'])
     # TA has added a new video. Create an NFO file for media managers.
     title = title.replace('.mp4','.nfo')
-    f= open(TARGET_FOLDER + "/" + chan_name + "/" + title,"w+")
+    f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + title, "w+")
     f.write('<?xml version="1.0" ?>\n<episodedetails>\n\t' +
         "<title>" + video_meta_data['title'] + "</title>\n\t" +
         "<showtitle>" + video_meta_data['channel']['channel_name'] + "</showtitle>\n\t" +
-        "<uniqueid>" + video_meta_data['youtube_id'] + "</uniqueid>\n\t" +
+        "<youtubemetadataid>" + video_meta_data['youtube_id'] + "</youtubemetadataid>\n\t" +
         "<plot>" + video_meta_data['description'] + "</plot>\n\t" +
-        "<premiered>" + video_meta_data['published'] + "</premiered>\n</episodedetails>")
+        "<premiered>" + video_meta_data['published'] + "</premiered>\n\t" +
+        "<episode>" + str(episode_num) + "</episode>\n</episodedetails>")
     f.close()
 
-def generate_new_video_sub(chan_name, title, video_meta_data):
-    logger.info("Generating subtitle symlink for %s video: %s", video_meta_data['channel']['channel_name'], video_meta_data['title'])
+def generate_new_video_sub(chan_name, playlist_name, title, video_meta_data):
+    logger.info("Symlink subtitle for %s video: %s", video_meta_data['channel']['channel_name'], video_meta_data['title'])
     # TA has added a new video. Create a symlink to subtitles.
     video_basename = os.path.splitext(video_meta_data['media_url'])[0]
-    os.symlink(TA_MEDIA_FOLDER + video_basename + ".en.vtt", TARGET_FOLDER + "/" + chan_name + "/" + title.replace(".mp4",".eng.vtt"))
+    os.symlink(TA_MEDIA_FOLDER + video_basename + ".en.vtt", TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + title.replace(".mp4",".eng.vtt"))
 
 def notify(video_meta_data):
 
@@ -136,7 +164,7 @@ def cleanup_after_deleted_videos():
             path = os.path.join(root,filename)
             file_info = os.path.splitext(path)
             # Check if the file is a video's nfo file
-            if not filename == "tvshow.nfo" and file_info[1] == ".nfo" :
+            if not filename == "tvshow.nfo" and not filename == "season.nfo" and file_info[1] == ".nfo" :
                 # Check if there is a corresponding video file and if not, delete the nfo file.
                 expected_video = path.replace('.nfo','.mp4')
                 if not os.path.exists(expected_video):
@@ -184,65 +212,99 @@ def simplify_date(s):
     return s
 
 os.makedirs(TARGET_FOLDER, exist_ok = True)
-url = TA_SERVER + '/api/channel/'
+
 headers = {'Authorization': 'Token ' + TA_TOKEN}
+
+url = TA_SERVER + '/api/playlist/'
+req = requests.get(url, headers=headers)
+if req and req.status_code == 200:
+    playlists_json = req.json()
+    playlists_data = playlists_json['data']
+else:
+    logger.info("No Playlists in TA, exiting")
+    # Bail from program as we have no playlists in TA.
+    sys.exit()
+
+url = TA_SERVER + '/api/channel/'
 req = requests.get(url, headers=headers)
 if req and req.status_code == 200:
     channels_json = req.json()
     channels_data = channels_json['data']
-else :
+else:
     logger.info("No Channels in TA, exiting")
     # Bail from program as we have no channels in TA.
     sys.exit()
+
+while playlists_json['paginate']['last_page']:
+    playlists_json = requests.get(url, headers=headers, params={'page': playlists_json['paginate']['current_page'] + 1}).json()
+    playlists_data.extend(playlists_json['data'])
 
 while channels_json['paginate']['last_page']:
     channels_json = requests.get(url, headers=headers, params={'page': channels_json['paginate']['current_page'] + 1}).json()
     channels_data.extend(channels_json['data'])
 
 for channel in channels_data:
-    chan_name = urlify(sanitize(channel['channel_name']))
-    description = channel['channel_description']
-    logger.debug("Video Description: " + description)
-    logger.debug("Channel Name: " + chan_name)
-    if(len(chan_name) < 1): chan_name = channel['channel_id']
-    chan_url = url+channel['channel_id']+"/video/"
+    chan_name = sanitize(channel['channel_name'])
+    chan_desc = str(channel['channel_description'])
+    logger.debug("Channel Name: " + str(chan_name))
+    logger.debug("Channel Description: " + ((chan_desc[:63] + '\u2026') if len(chan_desc) > 63 else chan_desc))
+    if (len(chan_name) < 1): chan_name = channel['channel_id']
     try:
         os.makedirs(TARGET_FOLDER + "/" + chan_name, exist_ok = False)
         setup_new_channel_resources(chan_name, channel)
     except OSError as error:
         logger.debug("We already have %s channel folder", chan_name)
 
-    logger.debug("Channel URL: " + chan_url)
-    chan_videos = requests.get(chan_url, headers=headers)
-    chan_videos_json = chan_videos.json() if chan_videos and chan_videos.status_code == 200 else None
+    season_num = 0
+    for playlist in playlists_data:
+        if playlist['playlist_channel_id'] != channel['channel_id']:
+            continue
 
-    if chan_videos_json is not None:
-        chan_videos_data = chan_videos_json['data']
-        while chan_videos_json['paginate']['last_page']:
-            chan_videos_json = requests.get(chan_url, headers=headers, params={'page': chan_videos_json['paginate']['current_page'] + 1}).json()
-            chan_videos_data.extend(chan_videos_json['data'])
+        season_num += 1
+        playlist_name = sanitize(playlist['playlist_name'])
+        playlist_desc = str(playlist['playlist_description'])
+        logger.debug("Playlist Name: " + str(playlist_name))
+        logger.debug("Playlist Description: " + ((playlist_desc[:63] + '\u2026') if len(playlist_desc) > 63 else playlist_desc))
+        if (len(playlist_name) < 1): playlist_name = playlist['playlist_id']
+        try:
+            os.makedirs(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name, exist_ok = False)
+            setup_new_channel_playlist_resources(chan_name, channel, playlist_name, playlist, season_num)
+        except OSError as error:
+            logger.debug("We already have %s playlist folder", playlist_name)
 
-        for video in chan_videos_data:
-            video['media_url'] = video['media_url'].replace('/media','')
-            custom_name = chan_name + " - " + simplify_date(video['published']) + " - " + urlify(sanitize(video['title'])) + " [" + video['youtube_id'] + "]"
+        episode_num = 0
+        for video in playlist['playlist_entries']:
+            video_url = TA_SERVER + '/api/video/' + video['youtube_id'] + "/"
+            logger.debug("Video URL: " + video_url)
+            video_data = requests.get(video_url, headers=headers)
+            video_json = video_data.json() if video_data and video_data.status_code == 200 else None
+
+            if video_json is None:
+                continue
+
+            episode_num += 1
+            video = video_json['data']
+            video['media_url'] = video['media_url'].replace('/media', '')
+            video_chan = video['channel']['channel_name'] or video['channel']['channel_id']
+            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video['published']) + " - " + urlify(sanitize(video['title'])) + " [" + video['youtube_id'] + "]"
             logger.debug(custom_name + ", " + video['media_url'])
             title=custom_name + ".mp4"
             try:
-                os.symlink(TA_MEDIA_FOLDER + video['media_url'], TARGET_FOLDER + "/" + chan_name + "/" + title)
+                os.symlink(TA_MEDIA_FOLDER + video['media_url'], TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + title)
                 # Getting here means a new video.
-                logger.info("Processing new video from %s: %s", chan_name, title)
+                logger.info("Processing new video from %s: %s, %s", chan_name, playlist_name, title)
                 if NOTIFICATIONS_ENABLED:
                     notify(video)
-                else:
-                    logger.debug("Notification not sent for %s new video: %s as NOTIFICATIONS_ENABLED is set to False in .env settings.", chan_name, title)
+                #else:
+                    #logger.debug("Notification not sent for %s new video: %s as NOTIFICATIONS_ENABLED is set to False in .env settings.", chan_name, title)
                 if GENERATE_NFO:
-                    generate_new_video_nfo(chan_name, title, video)
-                else:
-                    logger.debug("Not generating NFO files for %s new video: %s as GENERATE_NFO is et to False in .env settings.", chan_name, title)
+                    generate_new_video_nfo(chan_name, playlist_name, title, video, episode_num)
+                #else:
+                    #logger.debug("Not generating NFO files for %s new video: %s as GENERATE_NFO is et to False in .env settings.", chan_name, title)
                 if SYMLINK_SUBS:
-                    generate_new_video_sub(chan_name, title, video)
-                else:
-                    logger.debug("Not generating subtitle symlink for %s new video: %s as SYMLINK_SUBS is et to False in .env settings.", chan_name, title)
+                    generate_new_video_sub(chan_name, playlist_name, title, video)
+                #else:
+                    #logger.debug("Not generating subtitle symlink for %s new video: %s as SYMLINK_SUBS is et to False in .env settings.", chan_name, title)
             except FileExistsError:
                 # This means we already had processed the video, completely normal.
                 logger.debug("Symlink exists for " + title)
