@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, Response
 import os
 import subprocess
+import sys
 
 # Pull configuration details from .env file.
 load_dotenv()
@@ -19,7 +20,7 @@ def return_response():
     print("TA has made changes to the video archive, invoking helper script.")
 
     # Use Popen so we immediately return and sending apprise doesn't time out.
-    subprocess.Popen(["python", TA_HELPER_SCRIPT])
+    subprocess.Popen([sys.executable, TA_HELPER_SCRIPT])
 
     ## Do something with the request.json data.
     return result
