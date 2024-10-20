@@ -10,9 +10,11 @@ TA_SERVER = "http://192.168.1.11:8000"
 TA_TOKEN = "c0ff142e1c336e9f43be560b5c942d61e7e7c7fb"
 
 # The host path to the TA Docker cache channel folder.
-# Just drop "/cache" from your docker's config value.
 # If you do not have access to the cache folder, leave it empty: "".
 TA_CACHE = "/home/me/dockers/YouTube"
+
+# If TA runs in Docker, enable this to automatically omit "/cache" prefix.
+TA_CACHE_DOCKER = "False"
 
 # Folder where TA stores its videos with Channel/Title ID's
 TA_MEDIA_FOLDER = "/home/me/Videos/YouTube"
