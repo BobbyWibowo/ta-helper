@@ -166,8 +166,16 @@ def cleanup_after_deleted_videos():
             # TBD Also check TA if channel target folder should be deleted?
 
 def urlify(s):
-    s = re.sub(r"[^\w\s]", '', s)
-    s = re.sub(r"\s+", '-', s)
+    s = re.sub(r"[^\w\s]", "", s)
+    s = re.sub(r"\s+", "_", s)
+    return s
+
+def sanitize(s):
+    s = re.sub(r"[/\\?%*:|\"<>\x7F\x00-\x1F]", "-", s)
+    return s
+
+def simplify_date(s):
+    s = s.replace("-", "")
     return s
 
 os.makedirs(TARGET_FOLDER, exist_ok = True)
@@ -187,7 +195,7 @@ while channels_json['paginate']['last_page']:
     channels_data.extend(channels_json['data'])
 
 for channel in channels_data:
-    chan_name = urlify(channel['channel_name'])
+    chan_name = urlify(sanitize(channel['channel_name']))
     description = channel['channel_description']
     logger.debug("Video Description: " + description)
     logger.debug("Channel Name: " + chan_name)
@@ -211,8 +219,9 @@ for channel in channels_data:
 
         for video in chan_videos_data:
             video['media_url'] = video['media_url'].replace('/media','')
-            logger.debug(video['published'] + "_" + video['youtube_id'] + "_" + urlify(video['title']) + ", " + video['media_url'])
-            title=video['published'] + "_" + video['youtube_id'] + "_" + urlify(video['title']) + ".mp4"
+            custom_name = chan_name + " - " + simplify_date(video['published']) + " - " + urlify(sanitize(video['title'])) + " [" + video['youtube_id'] + "]"
+            logger.debug(custom_name + ", " + video['media_url'])
+            title=custom_name + ".mp4"
             try:
                 os.symlink(TA_MEDIA_FOLDER + video['media_url'], TARGET_FOLDER + "/" + chan_name + "/" + title)
                 # Getting here means a new video.
