@@ -79,7 +79,7 @@ def setup_new_channel_resources(chan_name, chan_data):
             "<outline>" + xmlesc(chan_data['channel_description'] or "") + "</outline>\n\t" +
             "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
             "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n\t"+
-            "<releasedate>" + chan_data['channel_last_refresh'] + "</releasedate></tvshow>")
+            "<releasedate>" + chan_data['channel_last_refresh'] + "</releasedate>\n</tvshow>")
     f.close()
 
 def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, playlist_data, season_num):
