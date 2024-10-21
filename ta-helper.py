@@ -299,7 +299,7 @@ for channel in channels_data:
         logger.debug("We already have %s channel folder", chan_name)
 
     # Season container for videos not assigned to playlists.
-    season_num = 0
+    season_num = 1
 
     playlist_name = "Videos"
     playlist_desc = "Channel's videos not assigned to any playlists."
@@ -310,8 +310,8 @@ for channel in channels_data:
         playlist_data = {
             'no_playlist': True,
             'playlist_description': playlist_desc,
-            'playlist_last_refresh': "-1",
-            'playlist_id': "-1"
+            'playlist_last_refresh': "",
+            'playlist_id': ""
         }
         setup_new_channel_playlist_resources(chan_name, channel, playlist_name, playlist_data, season_num)
     except OSError as error:
