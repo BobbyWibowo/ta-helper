@@ -43,6 +43,14 @@ def cache_path(cache):
     else:
         return TA_CACHE + cache
 
+def xmlesc(s):
+    s = s.replace("&", "&amp;")
+    s = s.replace("<", "&lt;")
+    s = s.replace(">", "&gt;")
+    s = s.replace('"', "&quot;")
+    s = s.replace("'", "&apos;")
+    return s
+
 def setup_new_channel_resources(chan_name, chan_data):
     logger.info("New channel \"%s\", setup resources.", chan_name)
     if TA_CACHE == "":
@@ -62,16 +70,16 @@ def setup_new_channel_resources(chan_name, chan_data):
     # Generate tvshow.nfo for media managers, no TA_CACHE required.
     logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo")
     f = open(TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo", "w+")
-    f.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + '\n'
-            '<tvshow>' + '\n\t' + '<title>' +
-            (chan_data['channel_name'] or chan_data['channel_id']) + "</title>\n\t" +
-            "<showtitle>" + (chan_data['channel_name'] or chan_data['channel_id']) + "</showtitle>\n\t" +
+    f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<tvshow>\n\t" +
+            "<title>" + xmlesc(chan_data['channel_name'] or chan_data['channel_id']) + "</title>\n\t" +
+            "<showtitle>" + xmlesc(chan_data['channel_name'] or chan_data['channel_id']) + "</showtitle>\n\t" +
             "<youtubemetadataid>" + chan_data['channel_id'] + "</youtubemetadataid>\n\t" +
-            "<lockdata>true</lockdata>\n\t" +
-            "<plot>" + (chan_data['channel_description'] or "") + "</plot>\n\t" +
-            "<outline>" + (chan_data['channel_description'] or "") + "</outline>\n\t" +
+            #"<lockdata>false</lockdata>\n\t" +
+            "<plot>" + xmlesc(chan_data['channel_description'] or "") + "</plot>\n\t" +
+            "<outline>" + xmlesc(chan_data['channel_description'] or "") + "</outline>\n\t" +
             "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
-            "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n</tvshow>")
+            "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n\t"+
+            "<releasedate>" + chan_data['channel_last_refresh'] + "</releasedate></tvshow>")
     f.close()
 
 def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, playlist_data, season_num):
@@ -93,16 +101,16 @@ def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, pl
     # Generate season.nfo for media managers, no TA_CACHE required.
     logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo")
     f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo", "w+")
-    f.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + '\n'
-            '<season>' + '\n\t' + '<title>' +
-            (playlist_name or playlist_data['playlist_id']) + "</title>\n\t" +
-            "<showtitle>" + (chan_data['channel_name'] or chan_data['channel_id']) + "</showtitle>\n\t" +
+    f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<season>\n\t" +
+            "<title>" + xmlesc(playlist_name or playlist_data['playlist_id']) + "</title>\n\t" +
+            "<showtitle>" + xmlesc(chan_data['channel_name'] or chan_data['channel_id']) + "</showtitle>\n\t" +
             "<youtubemetadataid>" + playlist_data['playlist_id'] + "</youtubemetadataid>\n\t" +
-            "<lockdata>true</lockdata>\n\t" +
-            "<plot>" + (playlist_data['playlist_description'] or "") + "</plot>\n\t" +
-            "<outline>" + (playlist_data['playlist_description'] or "") + "</outline>\n\t" +
+            #"<lockdata>false</lockdata>\n\t" +
+            "<plot>" + xmlesc(playlist_data['playlist_description'] or "") + "</plot>\n\t" +
+            "<outline>" + xmlesc(playlist_data['playlist_description'] or "") + "</outline>\n\t" +
             "<art>\n\t\t<poster>" + poster_symlink + "</poster>\n\t</art>\n\t" +
             "<premiered>" + playlist_data['playlist_last_refresh'] + "</premiered>\n\t" +
+            "<releasedate>" + playlist_data['playlist_last_refresh'] + "</releasedate>\n\t" +
             "<seasonnumber>" + str(season_num) + "</seasonnumber>\n</season>")
     f.close()
 
@@ -111,13 +119,13 @@ def generate_new_video_nfo(chan_name, playlist_name, title, video_meta_data, epi
     # TA has added a new video. Create an NFO file for media managers.
     title = title.replace('.mp4','.nfo')
     f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + title, "w+")
-    f.write('<?xml version="1.0" ?>\n<episodedetails>\n\t' +
-        "<title>" + video_meta_data['title'] + "</title>\n\t" +
-        "<showtitle>" + video_meta_data['channel']['channel_name'] + "</showtitle>\n\t" +
+    f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<episodedetails>\n\t" +
+        "<title>" + xmlesc(video_meta_data['title']) + "</title>\n\t" +
+        "<showtitle>" + xmlesc(video_meta_data['channel']['channel_name']) + "</showtitle>\n\t" +
         "<youtubemetadataid>" + video_meta_data['youtube_id'] + "</youtubemetadataid>\n\t" +
-        "<lockdata>false</lockdata>\n\t" +
-        "<plot>" + video_meta_data['description'] + "</plot>\n\t" +
-        "<premiered>" + video_meta_data['published'] + "</premiered>\n\t" +
+        #"<lockdata>false</lockdata>\n\t" +
+        "<plot>" + xmlesc(video_meta_data['description']) + "</plot>\n\t" +
+        "<aired>" + video_meta_data['published'] + "</aired>\n\t" +
         "<season>" + str(season_num) + "</season>\n\t" +
         "<episode>" + str(episode_num) + "</episode>\n</episodedetails>")
     f.close()
