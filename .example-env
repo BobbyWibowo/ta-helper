@@ -39,6 +39,11 @@ GENERATE_NFO = "True"
 # "True" for enable, "False" for disable
 SYMLINK_SUBS = "True"
 
+# Whether this script should generate NFO files for shows structure
+# tvshow.nfo in playlist owner's directory, and season.nfo in individual playlist's directory
+# "True" for enable, "False" for disable
+GENERATE_SHOWS_NFO = "False"
+
 # Instruction to tell apprise how to notify.  Read all of the options
 # here: https://pypi.org/project/apprise/
 APPRISE_LINK = "mailto://<username>:<password>@gmail.com"

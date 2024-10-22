@@ -22,6 +22,7 @@ load_dotenv()
 NOTIFICATIONS_ENABLED = bool(strtobool(os.environ.get("NOTIFICATIONS_ENABLED", 'False')))
 GENERATE_NFO = bool(strtobool(os.environ.get("GENERATE_NFO", 'False')))
 SYMLINK_SUBS = bool(strtobool(os.environ.get("SYMLINK_SUBS", 'False')))
+GENERATE_SHOWS_NFO = bool(strtobool(os.environ.get("GENERATE_SHOWS_NFO", 'False')))
 FROMADDR = str(os.environ.get("MAIL_USER"))
 RECIPIENTS = str(os.environ.get("MAIL_RECIPIENTS"))
 RECIPIENTS = RECIPIENTS.split(',')
@@ -36,6 +37,21 @@ QUICK = bool(strtobool(os.environ.get("QUICK", 'True')))
 CLEANUP_DELETED_VIDEOS = bool(strtobool(str(os.environ.get("CLEANUP_DELETED_VIDEOS"))))
 
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+
+if TA_CACHE == "":
+    logger.info("No TA_CACHE available so cannot setup symlinks to cache files.")
+
+if not NOTIFICATIONS_ENABLED:
+    logger.debug("NOTIFICATIONS_ENABLED is set to False in .env settings.")
+
+if not GENERATE_SHOWS_NFO:
+    logger.debug("GENERATE_SHOWS_NFO is set to False in .env settings.")
+
+if not GENERATE_NFO:
+    logger.debug("GENERATE_NFO is et to False in .env settings.")
+
+if not SYMLINK_SUBS:
+    logger.debug("SYMLINK_SUBS is et to False in .env settings.")
 
 def cache_path(cache):
     if TA_CACHE_DOCKER:
@@ -53,11 +69,9 @@ def xmlesc(s):
 
 def setup_new_channel_resources(chan_name, chan_data):
     logger.info("New channel \"%s\", setup resources.", chan_name)
-    if TA_CACHE == "":
-        logger.info("No TA_CACHE available so cannot setup symlinks to cache files.")
-    else:
+    if TA_CACHE:
         # Link the channel logo from TA docker cache into target folder for media managers
-        # and file explorers. Provide cover.jpg, poster.jpg and banner.jpg symlinks.
+        # and file explorers. Provide cover.jpg, poster.jpg, folder.jpg and banner.jpg symlinks.
         channel_thumb_path = cache_path(chan_data['channel_thumb_url'])
         logger.info("Symlink cache %s thumb to poster, cover and folder.jpg files.", channel_thumb_path)
         os.symlink(channel_thumb_path, TARGET_FOLDER + "/" + chan_name + "/" + "poster.jpg")
@@ -67,68 +81,94 @@ def setup_new_channel_resources(chan_name, chan_data):
         channel_banner_path = cache_path(chan_data['channel_banner_url'])
         os.symlink(channel_banner_path, TARGET_FOLDER + "/" + chan_name + "/" + "banner.jpg")
 
-    # Generate tvshow.nfo for media managers, no TA_CACHE required.
-    logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo")
-    f = open(TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo", "w+")
-    f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<tvshow>\n\t" +
-            "<title>" + xmlesc(chan_data['channel_name'] or chan_data['channel_id']) + "</title>\n\t" +
-            "<showtitle>" + xmlesc(chan_data['channel_name'] or chan_data['channel_id']) + "</showtitle>\n\t" +
-            "<youtubemetadataid>" + chan_data['channel_id'] + "</youtubemetadataid>\n\t" +
-            #"<lockdata>false</lockdata>\n\t" +
+    if GENERATE_SHOWS_NFO:
+        # Generate tvshow.nfo for media managers, no TA_CACHE required.
+        logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo")
+        f = open(TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo", "w+")
+        f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
+            "<tvshow>\n\t" +
             "<plot>" + xmlesc(chan_data['channel_description'] or "") + "</plot>\n\t" +
             "<outline>" + xmlesc(chan_data['channel_description'] or "") + "</outline>\n\t" +
-            "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
+            #"<lockdata>false</lockdata>\n\t" +
+            "<title>" + xmlesc(chan_name) + "</title>\n\t" +
+            "<originaltitle>" + xmlesc(chan_name) + "</originaltitle>\n\t" +
+            "<year>" + chan_data['channel_last_refresh'][:4] + "</year>\n\t" +
             "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n\t"+
-            "<releasedate>" + chan_data['channel_last_refresh'] + "</releasedate>\n</tvshow>")
-    f.close()
+            "<releasedate>" + chan_data['channel_last_refresh'] + "</releasedate>\n" +
+            "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
+            "<youtubemetadataid>" + chan_data['channel_id'] + "</youtubemetadataid>\n\t" +
+            #"<showtitle>" + xmlesc(chan_name) + "</showtitle>\n\t" +
+            "</tvshow>")
+        f.close()
 
 def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, playlist_data, season_num):
     logger.info("New playlist \"%s\", setup resources.", playlist_name)
-    if TA_CACHE == "":
-        logger.info("No TA_CACHE available so cannot setup symlinks to cache files.")
-    else:
+    if TA_CACHE:
         if 'no_playlist' in playlist_data and playlist_data['no_playlist'] == True:
             playlist_thumb_path = cache_path(chan_data['channel_thumb_url'])
         else:
             # Link the playlist thumb from TA docker cache into target folder for media managers
-            # and file explorers.
+            # and file explorers. Provide folder.jpg symlink.
             playlist_thumb_path = cache_path(playlist_data['playlist_thumbnail'])
 
-        logger.info("Symlink cache %s thumb to poster.jpg file.", playlist_thumb_path)
-        poster_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "poster.jpg"
-        os.symlink(playlist_thumb_path, poster_symlink)
+        logger.info("Symlink cache %s thumb to folder.jpg file.", playlist_thumb_path)
+        folder_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "folder.jpg"
+        os.symlink(playlist_thumb_path, folder_symlink)
 
-    # Generate season.nfo for media managers, no TA_CACHE required.
-    logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo")
-    f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo", "w+")
-    f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<season>\n\t" +
-            "<title>" + xmlesc(playlist_name or playlist_data['playlist_id']) + "</title>\n\t" +
-            "<showtitle>" + xmlesc(chan_data['channel_name'] or chan_data['channel_id']) + "</showtitle>\n\t" +
-            "<youtubemetadataid>" + playlist_data['playlist_id'] + "</youtubemetadataid>\n\t" +
-            #"<lockdata>false</lockdata>\n\t" +
+    if GENERATE_SHOWS_NFO:
+        # Generate season.nfo for media managers, no TA_CACHE required.
+        logger.info("Generating %s", TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo")
+        f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo", "w+")
+        f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
+            "<season>\n\t" +
             "<plot>" + xmlesc(playlist_data['playlist_description'] or "") + "</plot>\n\t" +
             "<outline>" + xmlesc(playlist_data['playlist_description'] or "") + "</outline>\n\t" +
-            "<art>\n\t\t<poster>" + poster_symlink + "</poster>\n\t</art>\n\t" +
+            #"<lockdata>false</lockdata>\n\t" +
+            "<title>" + xmlesc(playlist_name) + "</title>\n\t" +
+            "<year>" + playlist_data['playlist_last_refresh'][:4] + "</year>\n\t" +
             "<premiered>" + playlist_data['playlist_last_refresh'] + "</premiered>\n\t" +
             "<releasedate>" + playlist_data['playlist_last_refresh'] + "</releasedate>\n\t" +
-            "<seasonnumber>" + str(season_num) + "</seasonnumber>\n</season>")
-    f.close()
+            "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
+            "<seasonnumber>" + str(season_num) + "</seasonnumber>\n" +
+            "<youtubemetadataid>" + playlist_data['playlist_id'] + "</youtubemetadataid>\n\t" +
+            #"<showtitle>" + xmlesc(chan_name) + "</showtitle>\n\t" +
+            "</season>")
+        f.close()
 
 def generate_new_video_nfo(chan_name, playlist_name, title, video_meta_data, episode_num, season_num):
     logger.info("Generating video NFO file for \"%s\": %s", video_meta_data['channel']['channel_name'], video_meta_data['title'])
-    # TA has added a new video. Create an NFO file for media managers.
-    title = title.replace('.mp4','.nfo')
-    f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + title, "w+")
-    f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n<episodedetails>\n\t" +
-        "<title>" + xmlesc(video_meta_data['title']) + "</title>\n\t" +
-        "<showtitle>" + xmlesc(video_meta_data['channel']['channel_name']) + "</showtitle>\n\t" +
-        "<youtubemetadataid>" + video_meta_data['youtube_id'] + "</youtubemetadataid>\n\t" +
-        #"<lockdata>false</lockdata>\n\t" +
-        "<plot>" + xmlesc(video_meta_data['description']) + "</plot>\n\t" +
-        "<aired>" + video_meta_data['published'] + "</aired>\n\t" +
-        "<season>" + str(season_num) + "</season>\n\t" +
-        "<episode>" + str(episode_num) + "</episode>\n</episodedetails>")
-    f.close()
+    if TA_CACHE:
+        # Link the video thumb from TA docker cache into target folder for media managers
+        # and file explorers. Provide -poster.jpg symlink.
+        video_thumb_path = cache_path(video_meta_data['vid_thumb_url'])
+
+        logger.info("Symlink cache %s thumb to -poster.jpg file.", video_thumb_path)
+        poster_title = title.replace('.mp4','-poster.jpg')
+        poster_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + poster_title
+        os.symlink(video_thumb_path, poster_symlink)
+
+    nfo_tag = "episodedetails" if GENERATE_SHOWS_NFO else "musicvideo"
+
+    if GENERATE_NFO:
+        # TA has added a new video. Create an NFO file for media managers.
+        title = title.replace('.mp4','.nfo')
+        f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + title, "w+")
+        f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
+            "<" + nfo_tag + ">\n\t" +
+            "<plot>" + xmlesc(video_meta_data['description']) + "</plot>\n\t" +
+            #"<lockdata>false</lockdata>\n\t" +
+            "<title>" + xmlesc(video_meta_data['title']) + "</title>\n\t" +
+            "<director>" + xmlesc(video_meta_data['channel']['channel_name']) + "</director>\n\t" +
+            "<year>" + video_meta_data['published'][:4] + "</year>\n\t" +
+            "<premiered>" + video_meta_data['published'] + "</premiered>\n\t" +
+            "<releasedate>" + video_meta_data['published'] + "</releasedate>\n\t" +
+            "<youtubemetadataid>" + video_meta_data['youtube_id'] + "</youtubemetadataid>\n\t" +
+            "<art>\n\t\t<poster>" + poster_symlink + "</poster>\n\t</art>\n\t" +
+            "<episode>" + str(episode_num) + "</episode>\n" +
+            "<season>" + str(season_num) + "</season>\n\t" +
+            #"<showtitle>" + xmlesc(chan_name) + "</showtitle>\n\t" +
+            "</" + nfo_tag + ">")
+        f.close()
 
 def generate_new_video_sub(chan_name, playlist_name, title, video_meta_data):
     logger.info("Symlink subtitle for \"%s\": %s", video_meta_data['channel']['channel_name'], video_meta_data['title'])
@@ -227,18 +267,11 @@ def process_video(chan_name, playlist_name, title, video, episode_num, season_nu
 
     if NOTIFICATIONS_ENABLED:
         notify(video)
-    else:
-        logger.debug("Notification not sent for \"%s\": %s as NOTIFICATIONS_ENABLED is set to False in .env settings.", chan_name, title)
 
-    if GENERATE_NFO:
-        generate_new_video_nfo(chan_name, playlist_name, title, video, episode_num, season_num)
-    else:
-        logger.debug("Not generating video NFO file for \"%s\": %s as GENERATE_NFO is et to False in .env settings.", chan_name, title)
+    generate_new_video_nfo(chan_name, playlist_name, title, video, episode_num, season_num)
 
     if SYMLINK_SUBS:
         generate_new_video_sub(chan_name, playlist_name, title, video)
-    else:
-        logger.debug("Not generating subtitle symlink for \"%s\": %s as SYMLINK_SUBS is et to False in .env settings.", chan_name, title)
 
 def urlify(s):
     s = re.sub(r"[^\w\s]", "", s)
@@ -317,6 +350,7 @@ for channel in channels_data:
         os.makedirs(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name, exist_ok = False)
         playlist_data = {
             'no_playlist': True,
+            'playlist_name': playlist_name,
             'playlist_description': playlist_desc,
             'playlist_last_refresh': "",
             'playlist_id': ""
@@ -381,6 +415,7 @@ for channel in channels_data:
             video_json = video_data.json() if video_data and video_data.status_code == 200 else None
 
             if video_json is None:
+                logger.warning("Missing video data for %s", video['youtube_id'])
                 continue
 
             episode_num += 1
