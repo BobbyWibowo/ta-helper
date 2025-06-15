@@ -97,7 +97,7 @@ def setup_new_channel_resources(chan_name, chan_data):
             "<plot>" + xmlesc(format_desc(chan_data['channel_description'] or "")) + "</plot>\n\t" +
             "<outline>" + xmlesc(format_desc(chan_data['channel_description'] or "")) + "</outline>\n\t" +
             #"<lockdata>false</lockdata>\n\t" +
-            "<title>" + xmlesc(chan_name) + "</title>\n\t" +
+            "<title>" + xmlesc(chan_data['channel_name']) + "</title>\n\t" +
             "<originaltitle>" + xmlesc(chan_name) + "</originaltitle>\n\t" +
             "<year>" + chan_data['channel_last_refresh'][:4] + "</year>\n\t" +
             "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n\t"+
@@ -131,7 +131,7 @@ def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, pl
             "<plot>" + xmlesc(format_desc(playlist_data['playlist_description'] or "")) + "</plot>\n\t" +
             "<outline>" + xmlesc(format_desc(playlist_data['playlist_description'] or "")) + "</outline>\n\t" +
             #"<lockdata>false</lockdata>\n\t" +
-            "<title>" + xmlesc(playlist_name) + "</title>\n\t" +
+            "<title>" + xmlesc(playlist_data['playlist_name']) + "</title>\n\t" +
             "<year>" + playlist_data['playlist_last_refresh'][:4] + "</year>\n\t" +
             "<premiered>" + playlist_data['playlist_last_refresh'] + "</premiered>\n\t" +
             "<releasedate>" + playlist_data['playlist_last_refresh'] + "</releasedate>\n\t" +
@@ -427,7 +427,7 @@ for channel in channels_data:
                 logger.debug("Symlink exists for \"%s\".", title)
                 if (QUICK):
                     time.sleep(.5)
-                    break;
+                    break
 
         logger.debug("Valid videos not assigned to playlists: %s / %s", episode_num, len(chan_videos_data))
 
@@ -479,7 +479,7 @@ for channel in channels_data:
                 logger.debug("Symlink exists for \"%s\".", video_symlink_name)
                 if (QUICK):
                     time.sleep(.5)
-                    break;
+                    break
 
         logger.debug("Valid videos assigned to this playlist: %s / %s", episode_num, len(playlist['playlist_entries']))
 
