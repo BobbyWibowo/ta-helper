@@ -411,20 +411,20 @@ for channel in channels_data:
         for video in playlist['playlist_entries']:
             video_url = TA_SERVER + '/api/video/' + video['youtube_id'] + "/"
             logger.debug("Video API: " + video_url)
-            video_data = requests.get(video_url, headers=headers)
-            video_json = video_data.json() if video_data and video_data.status_code == 200 else None
+            video_req = requests.get(video_url, headers=headers)
+            video_json = video_req.json() if video_req and video_req.status_code == 200 else None
 
             if video_json is None:
                 logger.warning("Missing video data for %s", video['youtube_id'])
                 continue
 
             episode_num += 1
-            video = video_json['data']
-            video_chan = video['channel']['channel_name'] or video['channel']['channel_id']
-            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video['published']) + " - " + urlify(sanitize(video['title']))[:64] + " [" + video['youtube_id'] + "]"
+            video_data = video_json
+            video_chan = video_data['channel']['channel_name'] or video_data['channel']['channel_id']
+            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - " + urlify(sanitize(video_data['title']))[:64] + " [" + video['youtube_id'] + "]"
             title = custom_name + ".mp4"
             try:
-                process_video(chan_name, playlist_name, title, video, episode_num, season_num)
+                process_video(chan_name, playlist_name, title, video_data, episode_num, season_num)
             except FileExistsError:
                 # This means we already had processed the video, completely normal.
                 logger.debug("Symlink exists for " + title)
