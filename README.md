@@ -23,8 +23,8 @@ Here is how your NFO file supporting media manager (Kodi, Emby, Jellyfin etc.) c
 
 ## Using It
 
-Copy `.example-env` to `.env` in the same folder as the script and edit to put in your own settings.  
-`.example-env` has detailed comments that explain how to use each setting.
+Copy `.example.env` to `.env` in the same folder as the script and edit to put in your own settings.  
+`.example.env` has detailed comments that explain how to use each setting.
 
 ## What exactly does it do?
 
