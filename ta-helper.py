@@ -220,7 +220,7 @@ def notify(video_meta_data):
     apobj.notify(body=email_body, title=video_title)
 
 def cleanup_after_deleted_videos():
-    logger.info("===")
+    logger.debug("===")
     logger.info("Checking for broken symlinks and .nfo files without videos in our target folder\u2026")
     broken = []
     folders = []
@@ -261,19 +261,18 @@ def cleanup_after_deleted_videos():
     else:
         logger.info('%d broken symlinks found, cleaning up\u2026', len(broken))
         for link in broken:
-            logger.info("Deleting file: %s", link)
             # Here we need to delete the NFO file and video and subtitle symlinks
             # associated with the deleted video.
             os.remove(link)
-            # TBD Also check TA if channel target folder should be deleted?
+            logger.info("Deleted broken symlink: %s", link)
 
     empty_dirs = 0
 
     if folders != []:
         for path in folders:
             if len(os.listdir(path)) == 0:
-                logger.info("Deleting empty folder: %s", path)
                 os.rmdir(path)
+                logger.info("Deleted empty folder: %s", path)
                 empty_dirs += 1
 
     if empty_dirs == 0:
@@ -353,7 +352,7 @@ while channels_json['paginate']['last_page']:
 
 # Show containers for all channels.
 for channel in channels_data:
-    logger.info("===")
+    logger.debug("===")
 
     chan_name = sanitize(channel['channel_name'])
     chan_desc = str(channel['channel_description'])
