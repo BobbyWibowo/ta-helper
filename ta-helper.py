@@ -70,6 +70,10 @@ def xmlesc(s):
     s = s.replace("'", "&apos;")
     return s
 
+def format_desc(s):
+    s = s.replace("\n", "<br>\n")
+    return s
+
 def setup_new_channel_resources(chan_name, chan_data):
     logger.info("New channel \"%s\", setup resources.", chan_name)
     if TA_CACHE:
@@ -90,8 +94,8 @@ def setup_new_channel_resources(chan_name, chan_data):
         f = open(TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo", "w+")
         f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
             "<tvshow>\n\t" +
-            "<plot>" + xmlesc(chan_data['channel_description'] or "") + "</plot>\n\t" +
-            "<outline>" + xmlesc(chan_data['channel_description'] or "") + "</outline>\n\t" +
+            "<plot>" + xmlesc(format_desc(chan_data['channel_description'] or "")) + "</plot>\n\t" +
+            "<outline>" + xmlesc(format_desc(chan_data['channel_description'] or "")) + "</outline>\n\t" +
             #"<lockdata>false</lockdata>\n\t" +
             "<title>" + xmlesc(chan_name) + "</title>\n\t" +
             "<originaltitle>" + xmlesc(chan_name) + "</originaltitle>\n\t" +
@@ -124,8 +128,8 @@ def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, pl
         f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo", "w+")
         f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
             "<season>\n\t" +
-            "<plot>" + xmlesc(playlist_data['playlist_description'] or "") + "</plot>\n\t" +
-            "<outline>" + xmlesc(playlist_data['playlist_description'] or "") + "</outline>\n\t" +
+            "<plot>" + xmlesc(format_desc(playlist_data['playlist_description'] or "")) + "</plot>\n\t" +
+            "<outline>" + xmlesc(format_desc(playlist_data['playlist_description'] or "")) + "</outline>\n\t" +
             #"<lockdata>false</lockdata>\n\t" +
             "<title>" + xmlesc(playlist_name) + "</title>\n\t" +
             "<year>" + playlist_data['playlist_last_refresh'][:4] + "</year>\n\t" +
@@ -158,7 +162,7 @@ def generate_new_video_nfo(chan_name, playlist_name, video_symlink_name, video_m
         f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + nfo_filename, "w+")
         f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
             "<" + nfo_tag + ">\n\t" +
-            "<plot>" + xmlesc(video_meta_data['description']) + "</plot>\n\t" +
+            "<plot>" + xmlesc(format_desc(video_meta_data['description'])) + "</plot>\n\t" +
             #"<lockdata>false</lockdata>\n\t" +
             "<title>" + xmlesc(video_meta_data['title']) + "</title>\n\t" +
             "<director>" + xmlesc(video_meta_data['channel']['channel_name']) + "</director>\n\t" +
