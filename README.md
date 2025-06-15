@@ -8,7 +8,8 @@ Nothing is touched in your Tube Archivist media folders.
 > If `GENERATE_NFO` is set to `"True"`, most fields that are already stored by TA will be mapped to fields expected by the plugin, including the video IDs.  
 > This ensures the plugin will be able to pull any additional data if necessary.  
 > Those data will only be stored in your Jellyfin database, leaving your TA untouched.  
-> Be advised that if you choose to explicitly refresh images of the Jellyfin library, it will also attempt to replace thumbnails of the videos, which will also replace the ones in TA because the images are symlinked.
+> Be advised that if you choose to explicitly refresh images of the Jellyfin library, it will also attempt to replace thumbnails of the videos, which will also replace the ones in TA because the images are symlinked.  
+> More details can be found in [https://github.com/BobbyWibowo/ta-helper/issues/1](https://github.com/BobbyWibowo/ta-helper/issues/1).
 
 The image below shows your original obfuscated naming on the left and new, human readable folders on the right.
 
