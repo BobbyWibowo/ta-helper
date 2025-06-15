@@ -76,13 +76,13 @@ def setup_new_channel_resources(chan_name, chan_data):
         # Link the channel logo from TA docker cache into target folder for media managers
         # and file explorers. Provide cover.jpg, poster.jpg, folder.jpg and banner.jpg symlinks.
         channel_thumb_path = cache_path(chan_data['channel_thumb_url'])
-        logger.debug("Symlink thumb \"%s\" to poster, cover, and folder.jpg files.", channel_thumb_path)
         os.symlink(channel_thumb_path, TARGET_FOLDER + "/" + chan_name + "/" + "poster.jpg")
         os.symlink(channel_thumb_path, TARGET_FOLDER + "/" + chan_name + "/" + "cover.jpg")
         folder_symlink = TARGET_FOLDER + "/" + chan_name + "/" + "folder.jpg"
         os.symlink(channel_thumb_path, folder_symlink)
         channel_banner_path = cache_path(chan_data['channel_banner_url'])
         os.symlink(channel_banner_path, TARGET_FOLDER + "/" + chan_name + "/" + "banner.jpg")
+        logger.debug("Symlink thumb \"%s\" to poster, cover, and folder.jpg files.", channel_thumb_path)
 
     if GENERATE_SHOWS_NFO:
         # Generate tvshow.nfo for media managers, no TA_CACHE required.
@@ -114,9 +114,9 @@ def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, pl
             # and file explorers. Provide folder.jpg symlink.
             playlist_thumb_path = cache_path(playlist_data['playlist_thumbnail'])
 
-        logger.debug("Symlink thumb \"%s\" to folder.jpg file.", playlist_thumb_path)
         folder_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "folder.jpg"
         os.symlink(playlist_thumb_path, folder_symlink)
+        logger.debug("Symlink thumb \"%s\" to folder.jpg file.", playlist_thumb_path)
 
     if GENERATE_SHOWS_NFO:
         # Generate season.nfo for media managers, no TA_CACHE required.
@@ -145,10 +145,10 @@ def generate_new_video_nfo(chan_name, playlist_name, video_symlink_name, video_m
         # and file explorers. Provide -poster.jpg symlink.
         video_thumb_path = cache_path(video_meta_data['vid_thumb_url'])
 
-        logger.debug("Symlink thumb \"%s\" to -poster.jpg file.", video_thumb_path)
         poster_title = video_symlink_name.replace('.mp4', '-poster.jpg')
         poster_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + poster_title
         os.symlink(video_thumb_path, poster_symlink)
+        logger.debug("Symlink thumb \"%s\" to -poster.jpg file.", video_thumb_path)
 
     nfo_tag = "episodedetails" if GENERATE_SHOWS_NFO else "musicvideo"
 
@@ -178,9 +178,9 @@ def generate_new_video_sub(chan_name, playlist_name, video_symlink_name, video_m
     video_basename = os.path.splitext(video_meta_data['media_url'])[0]
     subtitle_path = TA_MEDIA_FOLDER + video_basename + SUB_FORMAT
     if os.path.exists(subtitle_path):
-        logger.debug("Symlink subtitle for %s.", video_meta_data['youtube_id'])
         subtitle_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + video_symlink_name.replace(".mp4", ".eng.vtt")
         os.symlink(subtitle_path, subtitle_symlink)
+        logger.debug("Symlink subtitle for %s.", video_meta_data['youtube_id'])
     else:
         logger.debug("%s does not have %s subtitle.", video_meta_data['youtube_id'], SUB_FORMAT)
 
@@ -220,6 +220,7 @@ def notify(video_meta_data):
     apobj.notify(body=email_body, title=video_title)
 
 def cleanup_after_deleted_videos():
+    logger.info("===")
     logger.info("Checking for broken symlinks and .nfo files without videos in our target folder\u2026")
     broken = []
     folders = []
@@ -279,15 +280,15 @@ def cleanup_after_deleted_videos():
         logger.info("No empty folders found.")
 
 def process_video(chan_name, playlist_name, video_symlink_name, video, episode_num, season_num):
-    # Getting here means a new video.
-    logger.info("Processing new video from \"%s\": \"%s\".", chan_name, video['title'])
-
     video['media_url'] = video['media_url'].replace('/youtube', '')
     video_path = TA_MEDIA_FOLDER + video['media_url']
     video_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + video_symlink_name
 
-    logger.debug("Symlink video \"%s\" to \"%s\".", video_path, video_symlink)
     os.symlink(video_path, video_symlink)
+    logger.debug("Symlink video \"%s\" to \"%s\".", video_path, video_symlink)
+
+    # Getting here means a new video.
+    logger.info("Processing new video from \"%s\": \"%s\".", chan_name, video['title'])
 
     if NOTIFICATIONS_ENABLED:
         notify(video)
@@ -352,6 +353,8 @@ while channels_json['paginate']['last_page']:
 
 # Show containers for all channels.
 for channel in channels_data:
+    logger.info("===")
+
     chan_name = sanitize(channel['channel_name'])
     chan_desc = str(channel['channel_description'])
     logger.debug("Channel Name: %s", str(chan_name))
@@ -368,13 +371,15 @@ for channel in channels_data:
         except OSError as error:
             logger.error(error)
 
+    logger.debug("---")
+
     # Season container for videos not assigned to playlists.
     season_num = 1
 
     playlist_name = "Videos"
-    playlist_desc = "Channel's videos not assigned to any playlists."
-    logger.debug(playlist_name)
-    logger.debug(playlist_desc)
+    playlist_desc = "Channel's videos not assigned to playlists."
+    logger.debug("Playlist Name: %s", playlist_name)
+    logger.debug("Playlist Description: %s", playlist_desc)
 
     videos_path = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name
     if not os.path.exists(videos_path):
@@ -391,7 +396,7 @@ for channel in channels_data:
         except OSError as error:
             logger.error(error)
 
-    chan_videos_url = chan_url + channel['channel_id'] + "/video/"
+    chan_videos_url = TA_SERVER + '/api/video/?channel=' + channel['channel_id']
     logger.debug("Channel Videos API: %s", chan_videos_url)
     chan_videos = requests.get(chan_videos_url, headers=headers)
     chan_videos_json = chan_videos.json() if chan_videos and chan_videos.status_code == 200 else None
@@ -405,7 +410,7 @@ for channel in channels_data:
         episode_num = 0
         for video in chan_videos_data:
             # Continue to next video if it is assigned to a playlist.
-            if 'playlist' in video:
+            if 'playlist' in video and len(video['playlist']) > 0:
                 continue
 
             episode_num += 1
@@ -421,11 +426,15 @@ for channel in channels_data:
                     time.sleep(.5)
                     break;
 
+        logger.debug("Valid videos not assigned to playlists: %s / %s", episode_num, len(chan_videos_data))
+
     # Season containers for all playlists by this channel.
     for playlist in playlists_data:
         # Continue to next playlist if it is by another channel.
         if playlist['playlist_channel_id'] != channel['channel_id']:
             continue
+
+        logger.debug('---')
 
         season_num += 1
         playlist_name = sanitize(playlist['playlist_name'])
@@ -468,6 +477,8 @@ for channel in channels_data:
                 if (QUICK):
                     time.sleep(.5)
                     break;
+
+        logger.debug("Valid videos assigned to this playlist: %s / %s", episode_num, len(playlist['playlist_entries']))
 
 # If enabled, check for deleted video and if found cleanup video NFO file and video and subtitle symlinks.
 if CLEANUP_DELETED_VIDEOS:
