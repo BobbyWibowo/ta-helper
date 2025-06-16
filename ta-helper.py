@@ -74,20 +74,32 @@ def format_desc(s):
     s = s.replace("\n", "<br>\n")
     return s
 
+def setup_channel_thumb(chan_name, chan_data):
+    if not TA_CACHE:
+        return ''
+
+    # Link the channel logo from TA docker cache into target folder for media managers
+    # and file explorers. Provide cover.jpg, poster.jpg, folder.jpg and banner.jpg symlinks.
+    channel_thumb_path = cache_path(chan_data['channel_thumb_url'])
+    channel_banner_path = cache_path(chan_data['channel_banner_url'])
+
+    channel_root = TARGET_FOLDER + "/" + chan_name
+    target_filenames = ["poster.jpg", "cover.jpg", "folder.jpg", "banner.jpg"]
+    for filename in target_filenames:
+        try:
+            os.remove(channel_root + "/" + filename)
+        except FileNotFoundError:
+            pass
+
+        image_path = channel_banner_path if filename == "banner.jpg" else channel_thumb_path
+        os.symlink(image_path, channel_root + "/" + filename)
+
+    logger.debug("Symlink thumb \"%s\" to poster, cover, and folder.jpg files.", channel_thumb_path)
+    return channel_root + "/folder.jpg"
+
 def setup_new_channel_resources(chan_name, chan_data):
     logger.info("New channel \"%s\", setup resources.", chan_name)
-    if TA_CACHE:
-        # Link the channel logo from TA docker cache into target folder for media managers
-        # and file explorers. Provide cover.jpg, poster.jpg, folder.jpg and banner.jpg symlinks.
-        channel_thumb_path = cache_path(chan_data['channel_thumb_url'])
-        os.symlink(channel_thumb_path, TARGET_FOLDER + "/" + chan_name + "/" + "poster.jpg")
-        os.symlink(channel_thumb_path, TARGET_FOLDER + "/" + chan_name + "/" + "cover.jpg")
-        folder_symlink = TARGET_FOLDER + "/" + chan_name + "/" + "folder.jpg"
-        os.symlink(channel_thumb_path, folder_symlink)
-        channel_banner_path = cache_path(chan_data['channel_banner_url'])
-        os.symlink(channel_banner_path, TARGET_FOLDER + "/" + chan_name + "/" + "banner.jpg")
-        logger.debug("Symlink thumb \"%s\" to poster, cover, and folder.jpg files.", channel_thumb_path)
-
+    folder_symlink = setup_channel_thumb(chan_name, chan_data)
     if GENERATE_SHOWS_NFO:
         # Generate tvshow.nfo for media managers, no TA_CACHE required.
         logger.info("Generating tvshow.nfo for channel %s.", chan_data['channel_id'])
@@ -108,20 +120,28 @@ def setup_new_channel_resources(chan_name, chan_data):
             "</tvshow>")
         f.close()
 
-def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, playlist_data, season_num):
+def setup_playlist_thumb(chan_name, playlist_name, playlist_data):
+    if not TA_CACHE or playlist_data['playlist_name'] == 'Videos':
+        return ''
+
+    # Link the playlist thumb from TA docker cache into target folder for media managers
+    # and file explorers. Provide folder.jpg symlink.
+    playlist_thumb_path = cache_path(playlist_data['playlist_thumbnail'])
+    folder_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "folder.jpg"
+
+    try:
+        os.remove(folder_symlink)
+    except FileNotFoundError:
+        pass
+
+    os.symlink(playlist_thumb_path, folder_symlink)
+
+    logger.debug("Symlink thumb \"%s\" to folder.jpg file.", playlist_thumb_path)
+    return folder_symlink
+
+def setup_new_channel_playlist_resources(chan_name, playlist_name, playlist_data, season_num):
     logger.info("New playlist \"%s\", setup resources.", playlist_name)
-    if TA_CACHE:
-        if 'no_playlist' in playlist_data and playlist_data['no_playlist'] == True:
-            playlist_thumb_path = cache_path(chan_data['channel_thumb_url'])
-        else:
-            # Link the playlist thumb from TA docker cache into target folder for media managers
-            # and file explorers. Provide folder.jpg symlink.
-            playlist_thumb_path = cache_path(playlist_data['playlist_thumbnail'])
-
-        folder_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "folder.jpg"
-        os.symlink(playlist_thumb_path, folder_symlink)
-        logger.debug("Symlink thumb \"%s\" to folder.jpg file.", playlist_thumb_path)
-
+    folder_symlink = setup_playlist_thumb(chan_name, playlist_name, playlist_data)
     if GENERATE_SHOWS_NFO:
         # Generate season.nfo for media managers, no TA_CACHE required.
         logger.info("Generating season.nfo for playlist %s.", playlist_data['playlist_id'])
@@ -142,20 +162,31 @@ def setup_new_channel_playlist_resources(chan_name, chan_data, playlist_name, pl
             "</season>")
         f.close()
 
+def setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_meta_data):
+    if not TA_CACHE:
+        return ''
+
+    # Link the video thumb from TA docker cache into target folder for media managers
+    # and file explorers. Provide -poster.jpg symlink.
+    video_thumb_path = cache_path(video_meta_data['vid_thumb_url'])
+
+    poster_title = video_symlink_name.replace('.mp4', '-poster.jpg')
+    poster_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + poster_title
+
+    try:
+        os.remove(poster_symlink)
+    except FileNotFoundError:
+        pass
+
+    os.symlink(video_thumb_path, poster_symlink)
+
+    logger.debug("Symlink thumb \"%s\" to -poster.jpg file.", video_thumb_path)
+    return poster_symlink
+
 def generate_new_video_nfo(chan_name, playlist_name, video_symlink_name, video_meta_data, episode_num, season_num):
     logger.info("Generating .nfo file for %s.", video_meta_data['youtube_id'])
-    if TA_CACHE:
-        # Link the video thumb from TA docker cache into target folder for media managers
-        # and file explorers. Provide -poster.jpg symlink.
-        video_thumb_path = cache_path(video_meta_data['vid_thumb_url'])
-
-        poster_title = video_symlink_name.replace('.mp4', '-poster.jpg')
-        poster_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + poster_title
-        os.symlink(video_thumb_path, poster_symlink)
-        logger.debug("Symlink thumb \"%s\" to -poster.jpg file.", video_thumb_path)
-
+    poster_symlink = setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_meta_data)
     nfo_tag = "episodedetails" if GENERATE_SHOWS_NFO else "musicvideo"
-
     if GENERATE_NFO:
         # TA has added a new video. Create an NFO file for media managers.
         nfo_filename = video_symlink_name.replace('.mp4', '.nfo')
@@ -189,8 +220,8 @@ def generate_new_video_sub(chan_name, playlist_name, video_symlink_name, video_m
         logger.debug("%s does not have %s subtitle.", video_meta_data['youtube_id'], SUB_FORMAT)
 
 def notify(video_meta_data):
-
     # Send a notification via apprise library.
+    logger.debug("===")
     logger.info("Sending new video notification %s.", video_meta_data['youtube_id'])
 
     email_body = '<!DOCTYPE PUBLIC “-//W3C//DTD XHTML 1.0 Transitional//EN” '
@@ -367,7 +398,9 @@ for channel in channels_data:
         chan_name = channel['channel_id']
 
     chan_path = TARGET_FOLDER + "/" + chan_name
-    if not os.path.exists(chan_path):
+    if os.path.exists(chan_path):
+        setup_channel_thumb(chan_name, channel)
+    else:
         try:
             os.makedirs(chan_path)
             setup_new_channel_resources(chan_name, channel)
@@ -389,13 +422,12 @@ for channel in channels_data:
         try:
             os.makedirs(videos_path)
             playlist_data = {
-                'no_playlist': True,
                 'playlist_name': playlist_name,
                 'playlist_description': playlist_desc,
                 'playlist_last_refresh': "",
                 'playlist_id': ""
             }
-            setup_new_channel_playlist_resources(chan_name, channel, playlist_name, playlist_data, season_num)
+            setup_new_channel_playlist_resources(chan_name, playlist_name, playlist_data, season_num)
         except OSError as error:
             logger.error(error)
 
@@ -449,10 +481,12 @@ for channel in channels_data:
             playlist_name = playlist['playlist_id']
 
         playlist_folder = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name
-        if not os.path.exists(playlist_folder):
+        if os.path.exists(playlist_folder):
+            setup_playlist_thumb(chan_name, playlist_name, playlist)
+        else:
             try:
                 os.makedirs(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name)
-                setup_new_channel_playlist_resources(chan_name, channel, playlist_name, playlist, season_num)
+                setup_new_channel_playlist_resources(chan_name, playlist_name, playlist, season_num)
             except OSError as error:
                 logger.error(error)
 
