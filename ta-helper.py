@@ -6,6 +6,7 @@ import logging
 import os
 import requests
 import re
+import shutil
 import sys
 import time
 
@@ -102,21 +103,19 @@ def setup_new_channel_resources(chan_name, chan_data):
     folder_symlink = setup_channel_thumb(chan_name, chan_data)
     if GENERATE_SHOWS_NFO:
         # Generate tvshow.nfo for media managers, no TA_CACHE required.
-        logger.info("Generating tvshow.nfo for channel %s.", chan_data['channel_id'])
+        logger.info("Generating tvshow.nfo for channel \"%s\".", chan_name)
         f = open(TARGET_FOLDER + "/" + chan_name + "/" + "tvshow.nfo", "w+")
         f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
             "<tvshow>\n\t" +
             "<plot>" + xmlesc(format_desc(chan_data['channel_description'] or "")) + "</plot>\n\t" +
             "<outline>" + xmlesc(format_desc(chan_data['channel_description'] or "")) + "</outline>\n\t" +
-            #"<lockdata>false</lockdata>\n\t" +
             "<title>" + xmlesc(chan_data['channel_name']) + "</title>\n\t" +
             "<originaltitle>" + xmlesc(chan_name) + "</originaltitle>\n\t" +
             "<year>" + chan_data['channel_last_refresh'][:4] + "</year>\n\t" +
             "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n\t"+
-            "<releasedate>" + chan_data['channel_last_refresh'] + "</releasedate>\n" +
+            "<releasedate>" + chan_data['channel_last_refresh'] + "</releasedate>\n\t" +
             "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
-            "<youtubemetadataid>" + chan_data['channel_id'] + "</youtubemetadataid>\n\t" +
-            #"<showtitle>" + xmlesc(chan_name) + "</showtitle>\n\t" +
+            "<youtubemetadataid>" + chan_data['channel_id'] + "</youtubemetadataid>\n" +
             "</tvshow>")
         f.close()
 
@@ -144,21 +143,19 @@ def setup_new_channel_playlist_resources(chan_name, playlist_name, playlist_data
     folder_symlink = setup_playlist_thumb(chan_name, playlist_name, playlist_data)
     if GENERATE_SHOWS_NFO:
         # Generate season.nfo for media managers, no TA_CACHE required.
-        logger.info("Generating season.nfo for playlist %s.", playlist_data['playlist_id'])
+        logger.info("Generating season.nfo for playlist \"%s\".", playlist_name)
         f = open(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + "season.nfo", "w+")
         f.write("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
             "<season>\n\t" +
             "<plot>" + xmlesc(format_desc(playlist_data['playlist_description'] or "")) + "</plot>\n\t" +
             "<outline>" + xmlesc(format_desc(playlist_data['playlist_description'] or "")) + "</outline>\n\t" +
-            #"<lockdata>false</lockdata>\n\t" +
             "<title>" + xmlesc(playlist_data['playlist_name']) + "</title>\n\t" +
             "<year>" + playlist_data['playlist_last_refresh'][:4] + "</year>\n\t" +
             "<premiered>" + playlist_data['playlist_last_refresh'] + "</premiered>\n\t" +
             "<releasedate>" + playlist_data['playlist_last_refresh'] + "</releasedate>\n\t" +
             "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
-            "<seasonnumber>" + str(season_num) + "</seasonnumber>\n" +
-            "<youtubemetadataid>" + playlist_data['playlist_id'] + "</youtubemetadataid>\n\t" +
-            #"<showtitle>" + xmlesc(chan_name) + "</showtitle>\n\t" +
+            "<seasonnumber>" + str(season_num) + "</seasonnumber>\n\t" +
+            "<youtubemetadataid>" + playlist_data['playlist_id'] + "</youtubemetadataid>\n" +
             "</season>")
         f.close()
 
@@ -257,6 +254,7 @@ def notify(video_meta_data):
 def cleanup_after_deleted_videos():
     logger.debug("===")
     logger.info("Checking for broken symlinks and .nfo files without videos in our target folder\u2026")
+    show_nfos = ["tvshow.nfo", "season.nfo"]
     broken = []
     folders = []
     for root, dirs, files in os.walk(TARGET_FOLDER):
@@ -267,9 +265,9 @@ def cleanup_after_deleted_videos():
             path = os.path.join(root, filename)
             file_info = os.path.splitext(path)
             # Check if the file is a video's nfo file
-            if not filename == "tvshow.nfo" and not filename == "season.nfo" and file_info[1] == ".nfo" :
+            if filename not in show_nfos and file_info[1] == ".nfo" :
                 # Check if there is a corresponding video file and if not, delete the nfo file.
-                expected_video = path.replace('.nfo','.mp4')
+                expected_video = path.replace('.nfo', '.mp4')
                 if not os.path.exists(expected_video):
                     logger.info("Found hanging .nfo file: %s", path)
                     # Queue the hanging nfo file for deletion.
@@ -309,6 +307,16 @@ def cleanup_after_deleted_videos():
                 os.rmdir(path)
                 logger.info("Deleted empty folder: %s", path)
                 empty_dirs += 1
+            elif len(os.listdir(path)) == 1:
+                if not shutil.rmtree.avoids_symlink_attacks:
+                    continue
+                for show_nfo in show_nfos:
+                    if not (os.path.isfile(os.path.join(path, show_nfo))):
+                        continue
+                    shutil.rmtree(path)
+                    logger.info("Deleted %s and its empty folder: %s", show_nfo, path)
+                    empty_dirs += 1
+                    break
 
     if empty_dirs == 0:
         logger.info("No empty folders found.")
