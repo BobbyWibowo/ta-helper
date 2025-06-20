@@ -299,14 +299,14 @@ def cleanup_after_deleted_videos():
             empty_subfolders.append(root)
 
     if broken == []:
-        logger.info("No broken symlinks found.")
+        logger.info("No broken files found.")
     else:
-        logger.info('%d broken symlinks found, cleaning up\u2026', len(broken))
+        logger.info('%d broken files found, cleaning up\u2026', len(broken))
         for link in broken:
             # Here we need to delete the NFO file and video and subtitle symlinks
             # associated with the deleted video.
             os.remove(link)
-            logger.info("Deleted broken symlink: %s", link)
+            logger.info("Deleted broken file: %s", link)
 
     if not shutil.rmtree.avoids_symlink_attacks:
         logger.info("Unable to clean-up empty folders due to unsafe shtuil.rmtree().")
@@ -380,7 +380,7 @@ logger.info("Fetching all playlists and channels\u2026")
 # Get all playlists from TA API.
 playlist_url = TA_SERVER + '/api/playlist/'
 logger.debug("Playlist API: %s", playlist_url)
-playlist_req = requests.get(playlist_url, headers=headers)
+playlist_req = requests.get(playlist_url, headers=headers, params={'page': 1})
 if playlist_req and playlist_req.status_code == 200:
     playlists_json = playlist_req.json()
     playlists_data = playlists_json['data']
@@ -396,7 +396,7 @@ while playlists_json['paginate']['last_page']:
 # Get all channels from TA API.
 chan_url = TA_SERVER + '/api/channel/'
 logger.debug("Channel API: %s", chan_url)
-chan_req = requests.get(chan_url, headers=headers)
+chan_req = requests.get(chan_url, headers=headers, params={'page': 1})
 if chan_req and chan_req.status_code == 200:
     channels_json = chan_req.json()
     channels_data = channels_json['data']
