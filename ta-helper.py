@@ -257,7 +257,7 @@ def notify(video_meta_data):
 
 def cleanup_after_deleted_videos():
     logger.debug("===")
-    logger.info("Checking for broken symlinks and .nfo files without videos in our target folder\u2026")
+    logger.info("Checking for broken symlinks and hanging .nfo files\u2026")
 
     broken = []
     empty_subfolders = []
@@ -318,7 +318,7 @@ def cleanup_after_deleted_videos():
         logger.info("%d empty sub-folders found, cleaning up\u2026", len(empty_subfolders))
         for subfolder in empty_subfolders:
             shutil.rmtree(subfolder)
-            logger.info("Deleted empty sub-folder %s", subfolder)
+            logger.info("Deleted empty sub-folder: %s", subfolder)
 
     # Clean-up empty channel folders.
     for entry in os.scandir(TARGET_FOLDER):
