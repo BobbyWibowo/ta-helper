@@ -64,6 +64,8 @@ def cache_path(cache):
         return TA_CACHE + cache
 
 def xmlesc(s):
+    if not s:
+        return ""
     s = s.replace("&", "&amp;")
     s = s.replace("<", "&lt;")
     s = s.replace(">", "&gt;")
@@ -72,6 +74,8 @@ def xmlesc(s):
     return s
 
 def format_desc(s):
+    if not s:
+        return ""
     s = s.replace("\n", "<br>\n")
     return s
 
@@ -235,7 +239,7 @@ def notify(video_meta_data):
     email_body += "\n<b>Video Views:</b> " + str(video_meta_data['stats']['view_count']) + "<br>" + '\n'
     email_body += "\n<b>Video Likes:</b> " + str(video_meta_data['stats']['like_count']) + "<br>" + '\n\n'
     email_body += "\n<b>Video Link:</b> <a href=\"" + video_url + "\">" + video_url + "</a><br>" + '\n'
-    email_body += "\n<b>Video Description:</b>\n\n<pre>" + video_meta_data['description'] + '</pre></br>\n\n'
+    email_body += "\n<b>Video Desc.:</b>\n\n<pre>" + video_meta_data['description'] + '</pre></br>\n\n'
     email_body += '\n</body>\n</html>'
 
     # Dump for local debug viewing
@@ -254,18 +258,22 @@ def notify(video_meta_data):
 def cleanup_after_deleted_videos():
     logger.debug("===")
     logger.info("Checking for broken symlinks and .nfo files without videos in our target folder\u2026")
-    show_nfos = ["tvshow.nfo", "season.nfo"]
+
     broken = []
-    folders = []
+    empty_subfolders = []
     for root, dirs, files in os.walk(TARGET_FOLDER):
         if root.startswith('./.git'):
             # Ignore the .git directory.
             continue
+
+        has_working_symlink = False
         for filename in files:
             path = os.path.join(root, filename)
             file_info = os.path.splitext(path)
             # Check if the file is a video's nfo file
-            if filename not in show_nfos and file_info[1] == ".nfo" :
+            if file_info[1] == ".nfo":
+                if filename in ["tvshow.nfo", "season.nfo"]:
+                    continue
                 # Check if there is a corresponding video file and if not, delete the nfo file.
                 expected_video = path.replace('.nfo', '.mp4')
                 if not os.path.exists(expected_video):
@@ -278,16 +286,17 @@ def cleanup_after_deleted_videos():
                 # Resolve relative symlinks
                 if not os.path.isabs(target_path):
                     target_path = os.path.join(os.path.dirname(path), target_path)
-                if not os.path.exists(target_path):
+                if os.path.exists(target_path):
+                    has_working_symlink = True
+                else:
                     # The symlink is broken.
                     broken.append(path)
             else:
                 # If it's not a symlink or hanging nfo file, we're not interested.
                 logger.debug("No need to clean-up \"%s\".", path)
-                continue
 
-        for dir in dirs:
-            folders.append(os.path.join(root, dir))
+        if not len(dirs) and not has_working_symlink:
+            empty_subfolders.append(root)
 
     if broken == []:
         logger.info("No broken symlinks found.")
@@ -299,27 +308,32 @@ def cleanup_after_deleted_videos():
             os.remove(link)
             logger.info("Deleted broken symlink: %s", link)
 
-    empty_dirs = 0
+    if not shutil.rmtree.avoids_symlink_attacks:
+        logger.info("Unable to clean-up empty folders due to unsafe shtuil.rmtree().")
+        return False
 
-    if folders != []:
-        for path in folders:
-            if len(os.listdir(path)) == 0:
-                os.rmdir(path)
-                logger.info("Deleted empty folder: %s", path)
-                empty_dirs += 1
-            elif len(os.listdir(path)) == 1:
-                if not shutil.rmtree.avoids_symlink_attacks:
-                    continue
-                for show_nfo in show_nfos:
-                    if not (os.path.isfile(os.path.join(path, show_nfo))):
-                        continue
-                    shutil.rmtree(path)
-                    logger.info("Deleted %s and its empty folder: %s", show_nfo, path)
-                    empty_dirs += 1
-                    break
+    if empty_subfolders == []:
+        logger.info("No empty sub-folders found.")
+    else:
+        logger.info("%d empty sub-folders found, cleaning up\u2026", len(empty_subfolders))
+        for subfolder in empty_subfolders:
+            shutil.rmtree(subfolder)
+            logger.info("Deleted empty sub-folder %s", subfolder)
 
-    if empty_dirs == 0:
-        logger.info("No empty folders found.")
+    # Clean-up empty channel folders.
+    for entry in os.scandir(TARGET_FOLDER):
+        if not entry.is_dir() or entry.name.startswith('./.git'):
+            continue
+
+        has_subfolders = False
+        for _entry in os.scandir(entry):
+            if _entry.is_dir():
+                has_subfolders = True
+                break
+
+        if not has_subfolders:
+            shutil.rmtree(entry)
+            logger.info("Deleted empty channel folder: %s", entry.path)
 
 def process_video(chan_name, playlist_name, video_symlink_name, video, episode_num, season_num):
     video['media_url'] = video['media_url'].replace('/youtube', '')
@@ -361,6 +375,8 @@ os.makedirs(TARGET_FOLDER, exist_ok = True)
 
 headers = {'Authorization': 'Token ' + TA_TOKEN}
 
+logger.info("Fetching all playlists and channels\u2026")
+
 # Get all playlists from TA API.
 playlist_url = TA_SERVER + '/api/playlist/'
 logger.debug("Playlist API: %s", playlist_url)
@@ -393,18 +409,21 @@ while channels_json['paginate']['last_page']:
     channels_json = requests.get(chan_url, headers=headers, params={'page': channels_json['paginate']['current_page'] + 1}).json()
     channels_data.extend(channels_json['data'])
 
+logger.info("Data fetched, processing\u2026")
+
 # Show containers for all channels.
 for channel in channels_data:
     logger.debug("===")
 
-    chan_name = sanitize(channel['channel_name'])
+    chan_name = str(channel['channel_name'])
     chan_desc = str(channel['channel_description'])
-    logger.debug("Channel Name: %s", str(chan_name))
-    logger.debug("Channel Description: %s", strmaxlen(chan_desc, 32))
-
     if (len(chan_name) < 1):
         chan_name = channel['channel_id']
 
+    logger.info("Channel: %s", chan_name)
+    logger.debug("Channel Desc.: %s", strmaxlen(chan_desc, 32))
+
+    chan_name = sanitize(chan_name)
     chan_path = TARGET_FOLDER + "/" + chan_name
     if os.path.exists(chan_path):
         setup_channel_thumb(chan_name, channel)
@@ -422,7 +441,7 @@ for channel in channels_data:
 
     playlist_name = "Videos"
     playlist_desc = "Channel's videos not assigned to playlists."
-    logger.debug("Playlist Name: %s", playlist_name)
+    logger.debug("Playlist: %s", playlist_name)
     logger.debug("Playlist Description: %s", playlist_desc)
 
     videos_path = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name
@@ -451,20 +470,21 @@ for channel in channels_data:
             chan_videos_data.extend(chan_videos_json['data'])
 
         episode_num = 0
-        for video in chan_videos_data:
+        for video_data in chan_videos_data:
             # Continue to next video if it is assigned to a playlist.
-            if 'playlist' in video and len(video['playlist']) > 0:
+            if 'playlist' in video_data and len(video_data['playlist']) > 0:
                 continue
 
             episode_num += 1
-            video_chan = video['channel']['channel_name'] or video['channel']['channel_id']
-            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video['published']) + " - " + urlify(sanitize(video['title']))[:64] + " [" + video['youtube_id'] + "]"
-            title = custom_name + ".mp4"
+            video_chan = video_data['channel']['channel_name'] or video_data['channel']['channel_id']
+            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - " + urlify(sanitize(video_data['title']))[:64] + " [" + video_data['youtube_id'] + "]"
+            video_symlink_name = custom_name + ".mp4"
             try:
-                process_video(chan_name, playlist_name, title, video, episode_num, season_num)
+                process_video(chan_name, playlist_name, video_symlink_name, video_data, episode_num, season_num)
             except FileExistsError:
+                setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_data)
                 # This means we already had processed the video, completely normal.
-                logger.debug("Symlink exists for \"%s\".", title)
+                logger.debug("Symlink exists for \"%s\".", video_symlink_name)
                 if (QUICK):
                     time.sleep(.5)
                     break
@@ -482,8 +502,8 @@ for channel in channels_data:
         season_num += 1
         playlist_name = sanitize(playlist['playlist_name'])
         playlist_desc = str(playlist['playlist_description'])
-        logger.debug("Playlist Name: %s", str(playlist_name))
-        logger.debug("Playlist Description: %s", strmaxlen(playlist_desc, 32))
+        logger.debug("Playlist: %s", str(playlist_name))
+        logger.debug("Playlist Desc.: %s", strmaxlen(playlist_desc, 32))
 
         if (len(playlist_name) < 1):
             playlist_name = playlist['playlist_id']
@@ -503,20 +523,20 @@ for channel in channels_data:
             video_url = TA_SERVER + '/api/video/' + video['youtube_id'] + "/"
             logger.debug("Video API: %s", video_url)
             video_req = requests.get(video_url, headers=headers)
-            video_json = video_req.json() if video_req and video_req.status_code == 200 else None
+            video_data = video_req.json() if video_req and video_req.status_code == 200 else None
 
-            if video_json is None:
+            if video_data is None:
                 logger.warning("Missing video data for %s.", video['youtube_id'])
                 continue
 
             episode_num += 1
-            video_data = video_json
             video_chan = video_data['channel']['channel_name'] or video_data['channel']['channel_id']
             custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - " + urlify(sanitize(video_data['title']))[:64] + " [" + video['youtube_id'] + "]"
             video_symlink_name = custom_name + ".mp4"
             try:
                 process_video(chan_name, playlist_name, video_symlink_name, video_data, episode_num, season_num)
             except FileExistsError:
+                setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_data)
                 # This means we already had processed the video, completely normal.
                 logger.debug("Symlink exists for \"%s\".", video_symlink_name)
                 if (QUICK):
