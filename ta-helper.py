@@ -477,7 +477,7 @@ for channel in channels_data:
 
             episode_num += 1
             video_chan = video_data['channel']['channel_name'] or video_data['channel']['channel_id']
-            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - " + urlify(sanitize(video_data['title']))[:64] + " [" + video_data['youtube_id'] + "]"
+            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - [" + video_data['youtube_id'] + "]"
             video_symlink_name = custom_name + ".mp4"
             try:
                 process_video(chan_name, playlist_name, video_symlink_name, video_data, episode_num, season_num)
@@ -531,7 +531,7 @@ for channel in channels_data:
 
             episode_num += 1
             video_chan = video_data['channel']['channel_name'] or video_data['channel']['channel_id']
-            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - " + urlify(sanitize(video_data['title']))[:64] + " [" + video['youtube_id'] + "]"
+            custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - [" + video['youtube_id'] + "]"
             video_symlink_name = custom_name + ".mp4"
             try:
                 process_video(chan_name, playlist_name, video_symlink_name, video_data, episode_num, season_num)
