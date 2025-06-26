@@ -214,7 +214,7 @@ def generate_new_video_sub(chan_name, playlist_name, video_symlink_name, video_m
     video_basename = os.path.splitext(video_meta_data['media_url'])[0]
     subtitle_path = TA_MEDIA_FOLDER + video_basename + SUB_FORMAT
     if os.path.exists(subtitle_path):
-        subtitle_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + video_symlink_name.replace(".mp4", ".eng.vtt")
+        subtitle_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + video_symlink_name.replace(".mp4", SUB_FORMAT)
         os.symlink(subtitle_path, subtitle_symlink)
         logger.debug("Symlink subtitle for %s.", video_meta_data['youtube_id'])
     else:
