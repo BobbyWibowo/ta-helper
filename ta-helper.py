@@ -534,7 +534,7 @@ for channel in channels_data:
             video_data = video_req.json() if video_req and video_req.status_code == 200 else None
 
             if video_data is None:
-                logger.warning("Missing video data for %s.", video['youtube_id'])
+                logger.debug("Missing video data for %s.", video['youtube_id'])
                 continue
 
             video_chan = video_data['channel']['channel_name'] or video_data['channel']['channel_id']
