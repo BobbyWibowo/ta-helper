@@ -471,14 +471,23 @@ for channel in channels_data:
 
         episode_num = 0
         for video_data in chan_videos_data:
-            # Continue to next video if it is assigned to a playlist.
-            if 'playlist' in video_data and len(video_data['playlist']) > 0:
-                continue
-
-            episode_num += 1
             video_chan = video_data['channel']['channel_name'] or video_data['channel']['channel_id']
             custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - [" + video_data['youtube_id'] + "]"
             video_symlink_name = custom_name + ".mp4"
+
+            # Try to clean-up old symlink if video is assigned to playlist.
+            if 'playlist' in video_data and len(video_data['playlist']) > 0:
+                video_path = TA_MEDIA_FOLDER + video_data['media_url'].replace('/youtube', '')
+                video_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + video_symlink_name
+
+                if os.path.exists(video_symlink):
+                    os.remove(video_symlink)
+                    logger.info("Video %s is now assigned to playlist, deleted: %s", video_data['youtube_id'], video_symlink)
+
+                # Continue to next video.
+                continue
+
+            episode_num += 1
             try:
                 process_video(chan_name, playlist_name, video_symlink_name, video_data, episode_num, season_num)
             except FileExistsError:
@@ -529,10 +538,11 @@ for channel in channels_data:
                 logger.warning("Missing video data for %s.", video['youtube_id'])
                 continue
 
-            episode_num += 1
             video_chan = video_data['channel']['channel_name'] or video_data['channel']['channel_id']
             custom_name = urlify(sanitize(video_chan)) + " - " + simplify_date(video_data['published']) + " - [" + video['youtube_id'] + "]"
             video_symlink_name = custom_name + ".mp4"
+
+            episode_num += 1
             try:
                 process_video(chan_name, playlist_name, video_symlink_name, video_data, episode_num, season_num)
             except FileExistsError:
