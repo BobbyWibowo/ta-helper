@@ -257,8 +257,9 @@ def notify(video_meta_data):
 
 def cleanup_after_deleted_videos():
     logger.debug("===")
-    logger.info("Checking for broken symlinks and hanging .nfo files\u2026")
+    logger.info("Checking for broken symlinks and hanging extra files\u2026")
 
+    extras_pattern = re.compile(r"(\.nfo|-poster\.jpg|" + re.escape(SUB_FORMAT) + r")$", re.IGNORECASE)
     broken = []
     empty_subfolders = []
     for root, dirs, files in os.walk(TARGET_FOLDER):
@@ -269,16 +270,14 @@ def cleanup_after_deleted_videos():
         has_working_symlink = False
         for filename in files:
             path = os.path.join(root, filename)
-            file_info = os.path.splitext(path)
-            # Check if the file is a video's nfo file
-            if file_info[1] == ".nfo":
+            # Check if the file is a video's extra file.
+            if extras_pattern.search(filename):
                 if filename in ["tvshow.nfo", "season.nfo"]:
                     continue
-                # Check if there is a corresponding video file and if not, delete the nfo file.
-                expected_video = path.replace('.nfo', '.mp4')
+                # Check if there is a corresponding video file and if not, delete the extra file.
+                expected_video = extras_pattern.sub(".mp4", path)
                 if not os.path.exists(expected_video):
-                    logger.info("Found hanging .nfo file: %s", path)
-                    # Queue the hanging nfo file for deletion.
+                    # Queue the hanging extra file for deletion.
                     broken.append(path)
             elif os.path.islink(path):
                 # We've found a symlink.
@@ -292,7 +291,7 @@ def cleanup_after_deleted_videos():
                     # The symlink is broken.
                     broken.append(path)
             else:
-                # If it's not a symlink or hanging nfo file, we're not interested.
+                # If it's not a symlink or hanging extra file, we're not interested.
                 logger.debug("No need to clean-up \"%s\".", path)
 
         if not len(dirs) and not has_working_symlink:
