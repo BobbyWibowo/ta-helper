@@ -116,8 +116,8 @@ def setup_new_channel_resources(chan_name, chan_data):
             "<title>" + xmlesc(chan_data['channel_name']) + "</title>\n\t" +
             "<originaltitle>" + xmlesc(chan_name) + "</originaltitle>\n\t" +
             "<year>" + chan_data['channel_last_refresh'][:4] + "</year>\n\t" +
-            "<premiered>" + chan_data['channel_last_refresh'] + "</premiered>\n\t"+
-            "<releasedate>" + chan_data['channel_last_refresh'] + "</releasedate>\n\t" +
+            "<premiered>" + chan_data['channel_last_refresh'][:10] + "</premiered>\n\t"+
+            "<releasedate>" + chan_data['channel_last_refresh'][:10] + "</releasedate>\n\t" +
             "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
             "<youtubemetadataid>" + chan_data['channel_id'] + "</youtubemetadataid>\n" +
             "</tvshow>")
@@ -155,8 +155,8 @@ def setup_new_channel_playlist_resources(chan_name, playlist_name, playlist_data
             "<outline>" + xmlesc(format_desc(playlist_data['playlist_description'] or "")) + "</outline>\n\t" +
             "<title>" + xmlesc(playlist_data['playlist_name']) + "</title>\n\t" +
             "<year>" + playlist_data['playlist_last_refresh'][:4] + "</year>\n\t" +
-            "<premiered>" + playlist_data['playlist_last_refresh'] + "</premiered>\n\t" +
-            "<releasedate>" + playlist_data['playlist_last_refresh'] + "</releasedate>\n\t" +
+            "<premiered>" + playlist_data['playlist_last_refresh'][:10] + "</premiered>\n\t" +
+            "<releasedate>" + playlist_data['playlist_last_refresh'][:10] + "</releasedate>\n\t" +
             "<art>\n\t\t<poster>" + folder_symlink + "</poster>\n\t</art>\n\t" +
             "<seasonnumber>" + str(season_num) + "</seasonnumber>\n\t" +
             "<youtubemetadataid>" + playlist_data['playlist_id'] + "</youtubemetadataid>\n" +
@@ -199,13 +199,13 @@ def generate_new_video_nfo(chan_name, playlist_name, video_symlink_name, video_m
             "<title>" + xmlesc(video_meta_data['title']) + "</title>\n\t" +
             "<director>" + xmlesc(video_meta_data['channel']['channel_name']) + "</director>\n\t" +
             "<year>" + video_meta_data['published'][:4] + "</year>\n\t" +
-            "<premiered>" + video_meta_data['published'] + "</premiered>\n\t" +
-            "<releasedate>" + video_meta_data['published'] + "</releasedate>\n\t" +
+            "<premiered>" + video_meta_data['published'][:10] + "</premiered>\n\t" +
+            "<releasedate>" + video_meta_data['published'][:10] + "</releasedate>\n\t" +
             "<youtubemetadataid>" + video_meta_data['youtube_id'] + "</youtubemetadataid>\n\t" +
             "<art>\n\t\t<poster>" + poster_symlink + "</poster>\n\t</art>\n\t" +
-            "<episode>" + str(episode_num) + "</episode>\n" +
-            "<season>" + str(season_num) + "</season>\n\t" +
-            #"<showtitle>" + xmlesc(chan_name) + "</showtitle>\n\t" +
+            "<episode>" + str(episode_num) + "</episode>\n\t" +
+            "<season>" + str(season_num) + "</season>\n" +
+            #"<showtitle>" + xmlesc(chan_name) + "</showtitle>\n" +
             "</" + nfo_tag + ">")
         f.close()
 
