@@ -4,9 +4,10 @@ from dotenv import load_dotenv
 import html2text
 import logging
 import os
-import requests
 import re
+import requests
 import shutil
+import subprocess
 import sys
 import time
 
@@ -38,6 +39,7 @@ TA_CACHE_DOCKER = bool(strtobool(os.environ.get("TA_CACHE_DOCKER", "False")))
 TARGET_FOLDER = str(os.environ.get("TARGET_FOLDER", ""))
 APPRISE_LINK = str(os.environ.get("APPRISE_LINK", ""))
 QUICK = bool(strtobool(os.environ.get("QUICK", "True")))
+POSTPROCESS_COMMAND = str(os.environ.get("POSTPROCESS_COMMAND", ""))
 CLEANUP_DELETED_VIDEOS = bool(strtobool(str(os.environ.get("CLEANUP_DELETED_VIDEOS", ""))))
 
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
@@ -553,3 +555,7 @@ for channel in channels_data:
 # If enabled, check for deleted video and if found cleanup video NFO file and video and subtitle symlinks.
 if CLEANUP_DELETED_VIDEOS:
     cleanup_after_deleted_videos()
+
+if POSTPROCESS_COMMAND:
+    logger.info("Running: \"%s\"", POSTPROCESS_COMMAND)
+    subprocess.run(POSTPROCESS_COMMAND)
