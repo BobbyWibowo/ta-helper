@@ -490,12 +490,10 @@ for channel in channels_data:
             try:
                 process_video(chan_name, playlist_name, video_symlink_name, video_data, episode_num, season_num)
             except FileExistsError:
-                setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_data)
                 # This means we already had processed the video, completely normal.
                 logger.debug("Symlink exists for \"%s\".", video_symlink_name)
-                if (QUICK):
-                    time.sleep(.5)
-                    break
+                if (QUICK): break
+                setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_data)
 
         logger.debug("Valid videos not assigned to playlists: %s / %s", episode_num, len(chan_videos_data))
 
@@ -545,12 +543,10 @@ for channel in channels_data:
             try:
                 process_video(chan_name, playlist_name, video_symlink_name, video_data, episode_num, season_num)
             except FileExistsError:
-                setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_data)
                 # This means we already had processed the video, completely normal.
                 logger.debug("Symlink exists for \"%s\".", video_symlink_name)
-                if (QUICK):
-                    time.sleep(.5)
-                    break
+                if (QUICK): break
+                setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_data)
 
         logger.debug("Valid videos assigned to this playlist: %s / %s", episode_num, len(playlist['playlist_entries']))
 
