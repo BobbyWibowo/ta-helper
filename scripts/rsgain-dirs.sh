@@ -21,5 +21,5 @@ for dirname in "${DIRS[@]}";
 do
     fullpath="$ROOT/$dirname"
     echo "$fullpath"
-    $RSGAIN_BINARY easy -S -m MAX -p no_album "$fullpath"
+    $RSGAIN_BINARY easy -S -m MAX "$fullpath"
 done
