@@ -1,6 +1,7 @@
 import apprise
 from distutils.util import strtobool
 from dotenv import load_dotenv
+from pathlib import Path
 import html2text
 import logging
 import os
@@ -26,7 +27,7 @@ load_dotenv()
 NOTIFICATIONS_ENABLED = bool(strtobool(os.environ.get("NOTIFICATIONS_ENABLED", "False")))
 GENERATE_NFO = bool(strtobool(os.environ.get("GENERATE_NFO", "False")))
 SYMLINK_SUBS = bool(strtobool(os.environ.get("SYMLINK_SUBS", "False")))
-SUB_FORMAT = str(os.environ.get("SUB_FORMAT", ".en.vtt"))
+SUB_FORMAT = str(os.environ.get("SUB_FORMAT", ".en*.vtt"))
 GENERATE_SHOWS_NFO = bool(strtobool(os.environ.get("GENERATE_SHOWS_NFO", "False")))
 FROMADDR = str(os.environ.get("MAIL_USER", ""))
 RECIPIENTS = str(os.environ.get("MAIL_RECIPIENTS", ""))
@@ -211,16 +212,26 @@ def generate_new_video_nfo(chan_name, playlist_name, video_symlink_name, video_m
             "</" + nfo_tag + ">")
         f.close()
 
-def generate_new_video_sub(chan_name, playlist_name, video_symlink_name, video_meta_data):
-    # TA has added a new video. Create a symlink to subtitles.
-    video_basename = os.path.splitext(video_meta_data['media_url'])[0]
-    subtitle_path = TA_MEDIA_FOLDER + video_basename + SUB_FORMAT
-    if os.path.exists(subtitle_path):
-        subtitle_symlink = TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + video_symlink_name.replace(".mp4", SUB_FORMAT)
-        os.symlink(subtitle_path, subtitle_symlink)
-        logger.debug("Symlink subtitle for %s.", video_meta_data['youtube_id'])
-    else:
-        logger.debug("%s does not have %s subtitle.", video_meta_data['youtube_id'], SUB_FORMAT)
+def setup_video_subtitle(chan_name, playlist_name, video_symlink_name, video_meta_data):
+    if not SYMLINK_SUBS:
+        return
+
+    video_symlink_path = Path(TARGET_FOLDER + "/" + chan_name + "/" + playlist_name + "/" + video_symlink_name)
+    video_path = Path(TA_MEDIA_FOLDER + video_meta_data['media_url'])
+    video_basename = video_path.with_suffix("")
+    subtitle_matches = list(video_basename.parent.glob(video_basename.name + SUB_FORMAT))
+
+    if subtitle_matches:
+        # Order matches, prefer shortest, alphabetically ordered (e.g., .en.vtt > .en-GB.vtt > .en-US.vtt).
+        subtitle_path = min(subtitle_matches, key=lambda f: (len(f.name), f.name))
+        subtitle_suffix = subtitle_path.name[len(video_basename.name):]
+
+        subtitle_symlink = video_symlink_path.with_suffix(subtitle_suffix)
+        try:
+            os.symlink(subtitle_path, subtitle_symlink)
+            logger.debug("Symlink subtitle for %s.", video_meta_data['youtube_id'])
+        except FileExistsError:
+            pass
 
 def notify(video_meta_data):
     # Send a notification via apprise library.
@@ -261,11 +272,14 @@ def cleanup_after_deleted_videos():
     logger.debug("===")
     logger.info("Checking for broken symlinks and hanging extra files\u2026")
 
-    extras_pattern = re.compile(r"(\.nfo|-poster\.jpg|" + re.escape(SUB_FORMAT) + r")$", re.IGNORECASE)
+    # video.en.vtt / video.ja-JP.vtt / etc.
+    # video.nfo
+    # video-poster.jpg
+    extras_pattern = re.compile(r"^(.*?)(?:\..*\.vtt|\.nfo|-poster\.jpg)$", re.IGNORECASE)
     broken = []
     empty_subfolders = []
     for root, dirs, files in os.walk(TARGET_FOLDER):
-        if root.startswith('./.git'):
+        if root.startswith("./.git"):
             # Ignore the .git directory.
             continue
 
@@ -273,11 +287,12 @@ def cleanup_after_deleted_videos():
         for filename in files:
             path = os.path.join(root, filename)
             # Check if the file is a video's extra file.
-            if extras_pattern.search(filename):
+            extras_matches = extras_pattern.match(filename)
+            if extras_matches:
                 if filename in ["tvshow.nfo", "season.nfo"]:
                     continue
                 # Check if there is a corresponding video file and if not, delete the extra file.
-                expected_video = extras_pattern.sub(".mp4", path)
+                expected_video = os.path.join(root, extras_matches.group(1) + ".mp4")
                 if not os.path.exists(expected_video):
                     # Queue the hanging extra file for deletion.
                     broken.append(path)
@@ -323,7 +338,7 @@ def cleanup_after_deleted_videos():
 
     # Clean-up empty channel folders.
     for entry in os.scandir(TARGET_FOLDER):
-        if not entry.is_dir() or entry.name.startswith('./.git'):
+        if not entry.is_dir() or entry.name.startswith("./.git"):
             continue
 
         has_subfolders = False
@@ -351,9 +366,7 @@ def process_video(chan_name, playlist_name, video_symlink_name, video, episode_n
         notify(video)
 
     generate_new_video_nfo(chan_name, playlist_name, video_symlink_name, video, episode_num, season_num)
-
-    if SYMLINK_SUBS:
-        generate_new_video_sub(chan_name, playlist_name, video_symlink_name, video)
+    setup_video_subtitle(chan_name, playlist_name, video_symlink_name, video)
 
 def urlify(s):
     s = re.sub(r"[^\w\s]", "", s)
@@ -496,6 +509,7 @@ for channel in channels_data:
                 logger.debug("Symlink exists for \"%s\".", video_symlink_name)
                 if (QUICK): break
                 setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_data)
+                setup_video_subtitle(chan_name, playlist_name, video_symlink_name, video_data)
 
         logger.debug("Valid videos not assigned to playlists: %s / %s", episode_num, len(chan_videos_data))
 
@@ -549,6 +563,7 @@ for channel in channels_data:
                 logger.debug("Symlink exists for \"%s\".", video_symlink_name)
                 if (QUICK): break
                 setup_video_thumb(chan_name, playlist_name, video_symlink_name, video_data)
+                setup_video_subtitle(chan_name, playlist_name, video_symlink_name, video_data)
 
         logger.debug("Valid videos assigned to this playlist: %s / %s", episode_num, len(playlist['playlist_entries']))
 

@@ -10,7 +10,7 @@ fi
 ROOT="/mnt/data/Videos/YouTube Symlinks"
 
 DIRS=(
-    "Bobby/Various Music Videos"
+    "Bobby/Various Music"
     "Diversity"
     "Nightblue Music"
     "Syrex"
